@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Data & checkpoints (large files)
+/data/
+/checkpoints/
+*.pt
+*.pth
+*.onnx
+
+# Logs & outputs
+/benchmark_results/
+/.omx/
+wandb/
+*.log
+inference_output/
+*.json
+!configs/*.yaml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/

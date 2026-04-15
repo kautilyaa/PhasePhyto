@@ -1,0 +1,37 @@
+# PlantVillage -> PlantDoc domain shift evaluation
+# Source: PlantVillage (38 classes, lab conditions)
+# Target: PlantDoc (17 classes, field conditions)
+
+seed: 42
+device: "cuda"
+checkpoint_dir: "checkpoints/plant_disease"
+project_name: "phasephyto-plant-disease"
+
+model:
+  backbone_name: "vit_base_patch16_224"
+  fusion_dim: 256
+  pretrained_backbone: true
+  freeze_backbone: false
+
+training:
+  lr: 5.0e-5
+  weight_decay: 1.0e-2
+  epochs: 30
+  warmup_epochs: 3
+  batch_size: 32
+  patience: 8
+  loss: "focal"
+  focal_gamma: 2.0
+
+data:
+  root: "data/plant_disease"
+  use_case: "plant_disease"
+  image_size: 224
+  val_split: 0.2
+  source_dir: "data/plant_disease/plantvillage"
+  target_dir: "data/plant_disease/plantdoc"
+  # Keep validation source-only; do not early-stop on PlantDoc.
+  train_dir: ""
+  val_dir: ""
+  eval_source_dir: "data/plant_disease/plantvillage"
+  eval_target_dir: "data/plant_disease/plantdoc/test"

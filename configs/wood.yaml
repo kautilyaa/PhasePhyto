@@ -1,0 +1,28 @@
+# XyloTron macroscopic wood anatomy: lab -> field domain shift
+
+seed: 42
+device: "cuda"
+checkpoint_dir: "checkpoints/wood"
+project_name: "phasephyto-wood"
+
+model:
+  backbone_name: "vit_base_patch16_224"
+  fusion_dim: 256
+  pretrained_backbone: true
+
+training:
+  lr: 5.0e-5
+  epochs: 40
+  warmup_epochs: 5
+  batch_size: 16
+  patience: 10
+  loss: "focal"
+  focal_gamma: 2.0
+
+data:
+  root: "data/wood"
+  use_case: "wood"
+  image_size: 224
+  domain: "lab"
+  source_dir: "data/wood/lab"
+  target_dir: "data/wood/field"

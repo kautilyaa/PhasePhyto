@@ -1,0 +1,24 @@
+# Pollen grain classification under microscopic variation
+
+seed: 42
+device: "cuda"
+checkpoint_dir: "checkpoints/pollen"
+project_name: "phasephyto-pollen"
+
+model:
+  backbone_name: "vit_base_patch16_224"
+  fusion_dim: 256
+  pretrained_backbone: true
+
+training:
+  lr: 1.0e-4
+  epochs: 50
+  warmup_epochs: 5
+  batch_size: 32
+  patience: 12
+  loss: "cross_entropy"
+
+data:
+  root: "data/pollen"
+  use_case: "pollen"
+  image_size: 224

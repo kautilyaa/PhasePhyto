@@ -1,0 +1,27 @@
+# Cross-stain potato tuber histology
+# Train on one stain, evaluate on others (6 permutations)
+
+seed: 42
+device: "cuda"
+checkpoint_dir: "checkpoints/histology"
+project_name: "phasephyto-histology"
+
+model:
+  backbone_name: "vit_base_patch16_224"
+  fusion_dim: 256
+  pretrained_backbone: true
+
+training:
+  lr: 1.0e-4
+  epochs: 40
+  warmup_epochs: 5
+  batch_size: 16
+  patience: 10
+  loss: "label_smoothing"
+  label_smoothing: 0.1
+
+data:
+  root: "data/histology"
+  use_case: "histology"
+  image_size: 224
+  stain: "all"

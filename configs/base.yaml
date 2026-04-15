@@ -1,0 +1,42 @@
+# PhasePhyto Base Configuration
+# Override per use-case in configs/<use_case>.yaml
+
+seed: 42
+device: "cuda"
+checkpoint_dir: "checkpoints"
+use_wandb: false
+project_name: "phasephyto"
+
+model:
+  backbone_name: "vit_base_patch16_224"
+  fusion_dim: 256
+  pc_scales: 4
+  pc_orientations: 6
+  num_heads: 4
+  dropout: 0.1
+  pretrained_backbone: true
+  freeze_backbone: false
+
+training:
+  lr: 1.0e-4
+  weight_decay: 1.0e-2
+  epochs: 50
+  warmup_epochs: 5
+  batch_size: 32
+  grad_clip: 1.0
+  patience: 10
+  loss: "cross_entropy"
+  label_smoothing: 0.1
+  focal_gamma: 2.0
+
+data:
+  root: "data"
+  use_case: "plant_disease"
+  image_size: 224
+  num_workers: 4
+  pin_memory: true
+  val_split: 0.2
+  train_dir: ""
+  val_dir: ""
+  eval_source_dir: ""
+  eval_target_dir: ""
