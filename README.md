@@ -124,6 +124,16 @@ pip install -e ".[all]"
 
 ### Google Colab (Recommended for first run)
 
+The Colab workflow is split by purpose:
+
+1. `notebooks/PhasePhyto_Download_Data_To_Drive.ipynb` -- one-time data download
+   and Drive manifest creation.
+2. `notebooks/PhasePhyto_Colab.ipynb` -- synthetic smoke test and full
+   PhasePhyto-vs-baseline training/evaluation.
+3. `notebooks/PhasePhyto_Inspect_00_Index.ipynb` -- start post-run inspection.
+   Then use the focused inspector notebooks for run overview, metrics, plots,
+   or reports.
+
 Open `notebooks/PhasePhyto_Colab.ipynb` in Google Colab with a T4 GPU. The
 notebook is fully self-contained -- it installs dependencies (`timm`,
 `opencv-python-headless`, `scikit-learn`, `matplotlib`, `seaborn`, `tqdm`,
@@ -133,7 +143,49 @@ domain shift, trains the ViT baseline, and visualises PC maps. The notebook
 uses source-only validation and resolves nested PlantDoc layouts such as
 `plantdoc/test/<class>`.
 
+The notebook also separates pipeline storage from data import. Set
+`CONFIG["storage_backend"]` to:
+
+- `"drive"` to write all run artifacts to Google Drive,
+- `"colab_ssd"` to write to fast ephemeral Colab local SSD,
+- `"external_ssd"` to write to a mounted/hooked SSD path such as
+  `CONFIG["external_ssd_project_dir"]`.
+
+Each run gets a structured directory:
+`runs/<run_name>/{checkpoints,plots,results}` plus `run_manifest.json`.
+For real data, prefer Drive tar archives: the downloader notebook creates
+`plantvillage.tar` and `plantdoc.tar`, and the training notebook extracts them
+into `/content/data` before training. This is much faster than `rsync` or
+reading thousands of image files directly from Drive.
+Notebook quality checks currently cover JSON validity, Python code-cell syntax,
+Drive/SSD artifact paths, label-aligned PlantDoc classification reports and
+confusion matrices, and reusable run manifests.
+If Colab encounters `PIL.UnidentifiedImageError`, see `notebooks/README.md`
+for the corrupt-image scan/quarantine workflow before rerunning training.
+
 ### Data Download
+
+For Colab-first workflows, use
+`notebooks/PhasePhyto_Download_Data_To_Drive.ipynb` once to download
+PlantVillage and PlantDoc into Google Drive. It writes:
+
+```text
+/content/drive/MyDrive/PhasePhyto/data/plant_disease/
+  plantvillage/
+  plantdoc/
+  dataset_manifest.json
+/content/drive/MyDrive/PhasePhyto/data/archives/
+  plantvillage.tar
+  plantdoc.tar
+```
+
+Then use `PhasePhyto_Colab.ipynb` with archive hydration enabled:
+
+```python
+CONFIG["use_synthetic"] = False
+CONFIG["hydrate_local_data_from_archives"] = True
+CONFIG["drive_archive_dir"] = "/content/drive/MyDrive/PhasePhyto/data/archives"
+```
 
 ```bash
 # Generate synthetic data for pipeline testing (no download needed)
@@ -330,7 +382,15 @@ PhasePhyto/
 │   ├── test_data_protocol.py    # Source-only validation + split resolution
 │   └── test_model_forward.py    # End-to-end forward/backward + shapes + param counts
 ├── notebooks/
-│   └── PhasePhyto_Colab.ipynb   # Self-contained Colab notebook (44 cells, T4 GPU)
+│   ├── README.md                # Notebook workflow index
+│   ├── PhasePhyto_Download_Data_To_Drive.ipynb # One-time Drive dataset prep
+│   ├── PhasePhyto_Colab.ipynb   # Training/evaluation notebook (48 cells)
+│   ├── PhasePhyto_Inspect_00_Index.ipynb # Inspection index/run chooser
+│   ├── PhasePhyto_Inspect_01_Run_Overview.ipynb # Manifest/artifact viewer
+│   ├── PhasePhyto_Inspect_02_Metrics.ipynb # Metrics comparison
+│   ├── PhasePhyto_Inspect_03_Plots.ipynb # Plot/image viewer
+│   ├── PhasePhyto_Inspect_04_Reports.ipynb # Report viewer
+│   └── PhasePhyto_Inspect_Run_Results.ipynb # Compatibility pointer
 └── scripts/
     ├── audit_class_overlap.py   # Source/target class-overlap audit
     ├── benchmark.py             # PhasePhyto-vs-baseline benchmark orchestration

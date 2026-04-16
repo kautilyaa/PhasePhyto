@@ -50,11 +50,61 @@ timm opencv-python-headless scikit-learn matplotlib seaborn tqdm pyyaml
 
 PyTorch, torchvision, and Pillow are provided by the standard Colab GPU runtime.
 
+### Storage Backends
+
+The notebook separates imported data from generated artifacts. Configure storage
+in the `CONFIG` cell:
+
+```python
+CONFIG["storage_backend"] = "drive"        # persistent Google Drive results
+CONFIG["storage_backend"] = "colab_ssd"    # fastest, but deleted when runtime ends
+CONFIG["storage_backend"] = "external_ssd" # mounted/hooked SSD path
+```
+
+For a mounted/hooked SSD, set:
+
+```python
+CONFIG["external_ssd_project_dir"] = "/path/to/mounted/ssd/PhasePhyto"
+CONFIG["plantvillage_dir"] = "/path/to/mounted/ssd/datasets/plantvillage"
+CONFIG["plantdoc_dir"] = "/path/to/mounted/ssd/datasets/plantdoc"
+```
+
+Artifacts are stored as:
+
+```text
+runs/<run_name>/
+  checkpoints/
+    best_phasephyto.pt
+    baseline_vit.pt
+  plots/
+    training_curves.png
+    illumination_invariance.png
+    confusion_matrices.png
+    analysis_sample_*.png
+  results/
+    phasephyto_domain_shift.json
+    phasephyto_results.json
+    target_classification_report.txt
+  run_manifest.json
+```
+
+For Colab, the fastest pattern is:
+
+1. Keep the master dataset and tar archives in Drive.
+2. Extract tar archives into `/content/data` at the start of each Colab session.
+3. Train from `/content/data`.
+4. Store final artifacts in Drive or a hooked SSD.
+
+This is faster than `rsync`/copying thousands of individual image files from Drive.
+
 ### Step 1: Open the Notebook
 
 1. Go to [Google Colab](https://colab.research.google.com)
 2. Click **File > Upload notebook**
-3. Upload `notebooks/PhasePhyto_Colab.ipynb` from this repo
+3. Upload the notebook for the current stage:
+   - `notebooks/PhasePhyto_Download_Data_To_Drive.ipynb` for one-time data prep
+   - `notebooks/PhasePhyto_Colab.ipynb` for training/evaluation
+   - `notebooks/PhasePhyto_Inspect_00_Index.ipynb` for result review entrypoint
 4. Or, if you pushed to GitHub: **File > Open notebook > GitHub** and paste the repo URL
 
 ### Step 2: Select GPU Runtime
@@ -82,7 +132,23 @@ pipeline without requiring real downloads.
 
 Once the pipeline test passes:
 
-1. Set `USE_SYNTHETIC = False` in the Configuration cell
+1. Recommended: run `notebooks/PhasePhyto_Download_Data_To_Drive.ipynb` once
+   to download PlantVillage and PlantDoc into Google Drive for reuse.
+2. Set `CONFIG["use_synthetic"] = False` in the training notebook.
+3. Use Drive tar archives to hydrate fast local Colab SSD data:
+
+```python
+CONFIG["hydrate_local_data_from_archives"] = True
+CONFIG["drive_archive_dir"] = "/content/drive/MyDrive/PhasePhyto/data/archives"
+CONFIG["local_data_root"] = "/content/data"
+```
+
+The training notebook will extract `plantvillage.tar` and `plantdoc.tar` into
+`/content/data` and automatically train from local SSD paths.
+
+Alternative manual download flow:
+
+1. Set `CONFIG["use_synthetic"] = False` in the Configuration cell
 2. Get PlantVillage data (choose one method):
 
 **Method A -- Kaggle API (recommended):**
@@ -105,6 +171,9 @@ drive.mount('/content/drive')
 PLANTVILLAGE_DIR = Path('/content/drive/MyDrive/datasets/plantvillage')
 PLANTDOC_DIR = Path('/content/drive/MyDrive/datasets/plantdoc')
 ```
+
+You can also set those paths through `CONFIG["plantvillage_dir"]` and
+`CONFIG["plantdoc_dir"]`, which is cleaner when using a hooked SSD.
 
 3. Get PlantDoc data:
 ```bash
@@ -130,6 +199,19 @@ only for final target-domain evaluation and baseline comparison.
 | `best_phasephyto.pt` | Best model checkpoint |
 | `baseline_vit.pt` | Baseline ViT checkpoint |
 | `phasephyto_results.json` | All metrics in machine-readable format |
+| `target_classification_report.txt` | PlantDoc/target report with labels aligned to source classes |
+| `run_manifest.json` | Single index of artifact paths and run configuration |
+
+After training, open `notebooks/PhasePhyto_Inspect_00_Index.ipynb` to choose a
+saved run, then open the focused inspector you need:
+
+- `PhasePhyto_Inspect_01_Run_Overview.ipynb` for manifest/artifact paths.
+- `PhasePhyto_Inspect_02_Metrics.ipynb` for metrics and gains.
+- `PhasePhyto_Inspect_03_Plots.ipynb` for plots and sample analyses.
+- `PhasePhyto_Inspect_04_Reports.ipynb` for target classification reports.
+
+Each inspector loads the latest run from Drive by default, or a specific run
+when you set `CONFIG["run_name"]`.
 
 ---
 
@@ -452,6 +534,21 @@ cd PhasePhyto
 pip install -e ".[dev]"
 python -m pytest tests/ -v
 ```
+
+### Colab Fails on a Corrupt Image
+
+If training or validation stops with:
+
+```text
+PIL.UnidentifiedImageError: cannot identify image file ... .JPG
+```
+
+the dataset contains an unreadable/corrupt image. The model is usually fine.
+Scan `/content/data/plantvillage` and `/content/data/plantdoc`, remove or
+quarantine bad files, then recreate tar archives. Full copy-paste cells are in
+`notebooks/README.md` under **Handling corrupt or unreadable images**.
+
+After cleanup, rerun the dataset/dataloader cell and restart training.
 
 ### Training Loss Not Decreasing
 - Check learning rate: ViT needs lower LR (1e-5 to 5e-5) than CNNs

@@ -10,10 +10,23 @@
   selectivity, circle-boundary phase symmetry, source-only validation handling,
   model forward/backward, attention normalization, and tiny synthetic training
   smoke tests.
-- Colab notebook is present (`notebooks/PhasePhyto_Colab.ipynb`, 44 cells) and
+- Colab notebook is present (`notebooks/PhasePhyto_Colab.ipynb`, 48 cells) and
   has been synced to the current `torch.amp` AMP API, corrected Log-Gabor FFT
   grid/sign masks, source-only validation protocol, Colab requirements, and
-  PlantDoc `test/` split resolution.
+  PlantDoc `test/` split resolution. It now also supports segregated run
+  artifacts under `runs/<run_name>/{checkpoints,plots,results}` with Drive,
+  Colab-local SSD, or mounted external/hooked SSD storage backends.
+- Downloader notebook can create Drive tar archives (`plantvillage.tar`,
+  `plantdoc.tar`), and the training notebook can hydrate `/content/data` from
+  those archives to avoid slow Drive file-by-file reads.
+- One-time data preparation notebook is present
+  (`notebooks/PhasePhyto_Download_Data_To_Drive.ipynb`) to download PlantVillage
+  and PlantDoc into Google Drive with a reusable dataset manifest.
+- Notebook quality audit passes for JSON validity and code-cell syntax. The
+  training notebook now saves a label-aligned target classification report and
+  uses explicit labels for PlantDoc confusion matrices.
+- Colab troubleshooting docs include corrupt/unreadable image scanning,
+  Drive quarantine, and tar archive recreation after dataset cleanup.
 - Real-data benchmark numbers are **not yet recorded** in this repo; compare
   PhasePhyto and the semantic-only baseline on the same split before making
   claims about field performance.
@@ -80,7 +93,15 @@
   │   ├── test_model_forward.py      # Forward/backward pass, shapes, param counts
   │   └── test_training_smoke.py     # Tiny synthetic trainer + baseline smoke tests
   ├── notebooks/
-  │   └── PhasePhyto_Colab.ipynb     # Self-contained Colab notebook (44 cells)
+  │   ├── README.md                  # Notebook workflow index
+  │   ├── PhasePhyto_Download_Data_To_Drive.ipynb # One-time Drive dataset prep
+  │   ├── PhasePhyto_Colab.ipynb     # Training/evaluation notebook (48 cells)
+  │   ├── PhasePhyto_Inspect_00_Index.ipynb # Inspection index/run chooser
+  │   ├── PhasePhyto_Inspect_01_Run_Overview.ipynb # Manifest/artifact viewer
+  │   ├── PhasePhyto_Inspect_02_Metrics.ipynb # Metrics comparison
+  │   ├── PhasePhyto_Inspect_03_Plots.ipynb # Plot/image viewer
+  │   ├── PhasePhyto_Inspect_04_Reports.ipynb # Report viewer
+  │   └── PhasePhyto_Inspect_Run_Results.ipynb # Compatibility pointer
   └── scripts/
       ├── audit_class_overlap.py     # PlantVillage/PlantDoc overlap audit
       ├── benchmark.py               # PhasePhyto-vs-baseline benchmark orchestration
