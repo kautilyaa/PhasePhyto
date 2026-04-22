@@ -240,6 +240,31 @@ PhasePhyto-vs-baseline metrics in `phasephyto_results.json`.
 
 ---
 
+## PlantDoc class-name mapping
+
+PlantDoc folder names do not exactly match PlantVillage folder names. If you see
+`normalized_overlap_num_classes: 0` in `dataset_manifest.json`, that is expected
+for raw names and does not mean evaluation is impossible.
+
+The training notebook now creates a mapped target folder automatically when the
+raw target dataset is empty after exact class matching. Examples:
+
+| PlantDoc folder | PlantVillage source class |
+|---|---|
+| `Apple Scab Leaf` | `Apple___Apple_scab` |
+| `Apple leaf` | `Apple___healthy` |
+| `Corn rust leaf` | `Corn_(maize)___Common_rust_` |
+| `Corn leaf blight` | `Corn_(maize)___Northern_Leaf_Blight` |
+| `Potato leaf early blight` | `Potato___Early_blight` |
+| `Potato leaf late blight` | `Potato___Late_blight` |
+| `Soyabean leaf` | `Soybean___healthy` |
+| `grape leaf black rot` | `Grape___Black_rot` |
+
+Unsupported PlantDoc classes are ignored when the matching PlantVillage source
+class is absent from the current source subset.
+
+---
+
 ## Tar / untar workflow for faster Colab setup
 
 Google Drive is slow when Colab reads or copies thousands of small image files.

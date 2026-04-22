@@ -1,57 +1,103 @@
 # PhasePhyto
 
-**Physics-Informed Differentiable Phase Congruency for Cross-Domain Botanical Visual Recognition**
+**A Rigorous OOD Study and Practical Recipe for Botanical Image Classification**
 
-PhasePhyto is a three-stream hybrid architecture that fuses zero-parameter frequency-domain transformations (Image Phase Congruency) with parameterised semantic neural networks for domain-invariant botanical image classification.
+PhasePhyto is a controlled empirical study of what does and does not transfer
+out-of-distribution for botanical image classification, using PlantVillage
+(lab, clean) -> PlantDoc (field, cluttered) as the benchmark. The repo
+implements a multi-stream architecture that fuses zero-parameter
+frequency-domain transformations (Image Phase Congruency, PC) with a ViT-B/16
+backbone and a CLAHE illumination stream via cross-attention, and reports
+per-lever deltas across seven orthogonal OOD-hardening techniques.
 
-## Overall Project State
+> **Project thesis pivoted on 2026-04-22** (v0.1.18). The original claim --
+> "physics-informed fusion yields OOD-invariant features and beats a ViT
+> baseline" -- is **not supported** by the data. The `pc_only` ablation scored
+> target F1 = 0.08 (random = 0.04), meaning the PC stream does not transfer
+> OOD despite its mathematical amplitude-invariance. The project now reports
+> this as a negative result and offers the rest of the training stack as a
+> reusable OOD recipe. See [RESULTS.md](RESULTS.md) for the pivot rationale,
+> Run Index, and per-run analysis.
 
-PhasePhyto is currently a **verified implementation scaffold with baseline
-tooling, ready for the first real benchmark run**.
+## Current results (PlantVillage -> PlantDoc, 25-class mapped)
 
-What is verified:
+| Date | Run | Source Acc | Source F1 | Target Acc | Target F1 | Notes |
+|---|---|---:|---:|---:|---:|---|
+| 2026-04-17 | baseline (pre-OOD) | 99.72% | 0.9948 | 47.71% | 0.3603 | plain recipe |
+| 2026-04-20 | `full` | 99.70% | 0.9951 | 50.33% | 0.3868 | +2.6 acc |
+| 2026-04-21 | `pc_only` | 73.40% | 0.5878 | 9.15% | 0.0791 | PC alone fails OOD |
+| 2026-04-21 | `full+leafmask` | 99.75% | 0.9955 | 52.29% | 0.3944 | +2.0 acc |
+| pending | `backbone_only` | -- | -- | -- | -- | settles PC-over-ViT question |
+| pending | `no_fusion` | -- | -- | -- | -- | settles cross-attention |
+| pending | pseudo-label rerun | -- | -- | -- | -- | Phase 7.1.b, calibrated thr |
 
-- `make verify` passes locally on Python 3.11.5.
-- Ruff passes, mypy reports no source issues, and pytest reports 30 passing
-  tests.
-- Core phase-congruency behavior is covered by tests for positive
-  brightness-scaling invariance, orientation filter selectivity, circle-boundary
-  phase symmetry, step-edge localization, output ranges, and NaN safety.
-- Full model forward/backward, attention normalization, fusion parameter budget,
-  source-only validation split handling, tiny synthetic CPU training, and
-  semantic-only baseline output contract are tested.
-- Colab training notebook, setup guide, configs, Makefile targets, PhasePhyto
-  CLIs, and baseline CLIs are present.
-- Colab notebook requirements and embedded training code are aligned with the
-  verified repo implementation: `torch.amp`, source-only validation,
-  PlantDoc `test/` split resolution, and corrected Log-Gabor FFT grid/sign masks.
-- The import package is now `phasephyto`, Git has been initialized locally, and
-  GitHub Actions CI is present.
+**Three-week aggregate target movement:** +4.6 acc, +3.4 F1. Source
+saturates at 99.7% throughout; residual gap is distributional.
 
-What is still pending:
+## What this project does and does NOT claim
 
-- Real PlantVillage -> PlantDoc PhasePhyto-vs-baseline numbers are not recorded
-  yet.
-- PlantVillage/PlantDoc class overlap should be audited with
-  `scripts/audit_class_overlap.py` on the downloaded real data before publishing
-  benchmark claims.
-- Run `scripts/benchmark.py` to produce the first reproducible benchmark table.
+**Does claim:**
 
-## Key Innovation
+- A reproducible, documented training recipe for botanical OOD: label
+  smoothing (0.1), differential LR (backbone 10x slower), weight EMA
+  (decay 0.999), SAM (rho 0.05), strong augmentation with shared-mask
+  random erasing and HSV-masked background replacement, HSV leaf
+  foreground gate, hflip TTA, TENT test-time adaptation.
+- A controlled ablation table (`full`, `pc_only`, `backbone_only`,
+  `no_fusion`) attributing target-side gains to specific architectural
+  components.
+- A negative result: phase congruency features, despite being
+  mathematically amplitude-invariant, do not transfer OOD on this leaf-disease
+  benchmark. Classes that do transfer under `pc_only` share strong
+  directional/periodic texture (leaf veins, lesion striations); hue- or
+  context-defined classes collapse.
 
-Standard deep learning models suffer 15--37% accuracy drops when moving from lab to field conditions because they rely on pixel intensity gradients that are destroyed by shadows, lighting changes, and sensor noise.
+**Does NOT claim (explicitly rescinded 2026-04-22):**
 
-PhasePhyto exploits a mathematical property of phase congruency:
+- That physics-informed fusion beats a ViT baseline under OOD.
+- That PC tokens contribute discriminative features (as opposed to
+  regularization) to the fused representation.
+- Any result on use cases 2-4 (histology, pollen, wood anatomy). The code
+  supports those datasets but no experimental work is currently planned.
+
+## Key mathematical property (holds at the raw-feature level only)
+
+Phase congruency satisfies:
 
 ```
 PC(image) = PC(image * k)    for any k > 0
 ```
 
-This makes the phase-congruency stream invariant to positive brightness scaling
-in unit tests, so structural features (edges, boundaries, textures) are preserved
-under illumination changes. End-to-end domain-shift gains still need to be
-measured against the included semantic-only baseline on your real source/target
-data.
+This invariance is verified to within FP32 precision in cell 37 of the
+training notebook across k in [0.5, 10]. But the `pc_only` ablation
+demonstrates that the property does **not** propagate through the
+classifier head to OOD class-discriminative power: the learned
+classifier still over-fits source texture statistics even when its input
+is amplitude-invariant. This gap between mathematical invariance and
+learned-classifier invariance is itself one of the findings of the
+negative study.
+
+## Implementation state
+
+- `make verify` passes locally on Python 3.11.5 (ruff, mypy, pytest).
+- Core phase-congruency behaviour covered by tests for positive
+  brightness-scaling invariance, orientation filter selectivity,
+  circle-boundary phase symmetry, step-edge localisation, output ranges,
+  and NaN safety.
+- Full model forward/backward, attention normalisation, fusion parameter
+  budget, source-only validation split handling, tiny synthetic CPU
+  training, and semantic-only baseline output contract are tested.
+- Colab notebook, setup guide, configs, Makefile targets, PhasePhyto
+  CLIs, and baseline CLIs are present.
+- GitHub Actions CI is present.
+
+## Remaining work to close out the study (ROADMAP Phase 7.2)
+
+1. Finish `backbone_only` ablation -- the single most important remaining number.
+2. Debug Phase 7.1.b pseudo-label (silently skipped in 2026-04-21 run; threshold 0.9 was too tight). Rerun with calibrated threshold guided by the confidence-histogram diagnostic already wired in cell 43.
+3. Run `no_fusion` ablation to attribute cross-attention contribution.
+4. One DANN (gradient reversal) attempt as the last target-gradient lever.
+5. Optional: save a "best-target-snapshot" checkpoint alongside "best-val" so the oracle target metric is always visible without dedicated ablations.
 
 ## Architecture
 
@@ -112,6 +158,8 @@ data.
 ## Quick Start
 
 > **New to PhasePhyto?** See **[GUIDE.md](GUIDE.md)** for a complete step-by-step walkthrough covering Colab setup, data download, training, evaluation, inference, reading PC maps, and troubleshooting.
+>
+> **Looking for the latest numbers?** See **[RESULTS.md](RESULTS.md)** for the chronological results log, including source/target metrics, deltas vs. prior runs, and per-run analysis.
 
 ### Installation
 
@@ -129,7 +177,17 @@ The Colab workflow is split by purpose:
 1. `notebooks/PhasePhyto_Download_Data_To_Drive.ipynb` -- one-time data download
    and Drive manifest creation.
 2. `notebooks/PhasePhyto_Colab.ipynb` -- synthetic smoke test and full
-   PhasePhyto-vs-baseline training/evaluation.
+   PhasePhyto-vs-baseline training/evaluation, with OOD-hardening enabled by
+   default: strong augmentation + HSV-masked background replacement, label
+   smoothing, differential backbone LR, weight EMA, an auxiliary PC-only
+   classifier head, optional SAM (Foret et al. 2021), hflip TTA, TENT
+   test-time adaptation (Wang et al. 2021), and an `ablation` toggle in
+   `{"full","pc_only","backbone_only","no_fusion"}` that re-uses the same
+   architecture (the forward path branches; parameter counts stay comparable).
+   Artifact directories are auto-suffixed by ablation (e.g.
+   `runs/20260420-HHMMSS_pc_only/`), so running all four ablations in sequence
+   does not overwrite the previous run. See the `OOD-generalization knobs`
+   block in CONFIG and the override cell below it.
 3. `notebooks/PhasePhyto_Inspect_00_Index.ipynb` -- start post-run inspection.
    Then use the focused inspector notebooks for run overview, metrics, plots,
    or reports.
@@ -162,6 +220,10 @@ Drive/SSD artifact paths, label-aligned PlantDoc classification reports and
 confusion matrices, and reusable run manifests.
 If Colab encounters `PIL.UnidentifiedImageError`, see `notebooks/README.md`
 for the corrupt-image scan/quarantine workflow before rerunning training.
+PlantDoc class folders do not exactly match PlantVillage class names. The
+notebooks and audit script now use a PlantDoc -> PlantVillage alias map so
+PlantDoc classes such as `Apple Scab Leaf` evaluate against source classes such
+as `Apple___Apple_scab` instead of producing an empty target set.
 
 ### Data Download
 
@@ -410,6 +472,361 @@ The PC stream produces three complementary structural maps from each input image
 All three maps are tested for positive brightness-scaling invariance. Treat
 claims about real lab-to-field improvement as experimental until PhasePhyto and
 the baseline have both been trained and evaluated on the same split.
+
+### Numerical Stability: Split Epsilon in PhaseCongruencyExtractor
+
+**What.** `PhaseCongruencyExtractor` uses two epsilon constants, not one:
+
+- `self.eps = 1e-6` -- used **only** in the main PC denominators:
+  `pc_orient = W_s * clamp(energy - T, 0) / (sum_A + self.eps)` and the
+  equivalent phase-symmetry division.
+- `self.sqrt_eps = 1e-12` -- used everywhere else: inside every
+  `torch.sqrt(...)` call (amplitude, energy, oriented energy), inside the
+  frequency-spread weight's `max_amp` denominator, and inside the per-image
+  min-max normalizer `(hi - lo + sqrt_eps)`.
+
+**Why.** A uniform `eps=1e-6` was tried first and broke amplitude invariance
+at every `k`. The reason is that an additive constant in a denominator only
+preserves `PC(kx) == PC(x)` when it is negligible compared to the denominator's
+signal. `self.eps` sees two very different denominators:
+
+1. `sum_A + eps` in the main PC formula. `sum_A` is a sum of 4 amplitudes per
+   pixel, typically well above `1e-6` for any non-background pixel, so
+   `eps=1e-6` does not perturb the ratio. This is where CLAUDE.md's
+   "PC denominator eps >= 1e-6" rule is needed, because the gradient path
+   through this division during training can explode if `sum_A` approaches
+   zero.
+2. `max_amp + eps` in the frequency-spread weight and `hi - lo + eps` in the
+   min-max normalizer. Both of these denominators can be small on smooth or
+   near-constant regions. A `1e-6` floor there shifts the ratio
+   non-proportionally with `k`, which min-max normalization then amplifies
+   across the whole `[0, 1]` output.
+
+Splitting the epsilon keeps CLAUDE.md's NaN-gradient guarantee where it
+matters (the PC denominator gradient path) and restores strict amplitude
+invariance everywhere else.
+
+**How the invariance test verifies this.** `notebooks/PhasePhyto_Colab.ipynb`
+cell 37 runs `PC(test_img)` vs `PC(k * test_img)` for
+`k in {0.1, 0.5, 2.0, 5.0, 10.0}` and compares the three PC maps elementwise.
+
+- Test input is seeded (`torch.manual_seed(0)`) and uses a structured image
+  (sine + cosine stripes + light noise) instead of pure uniform noise. Uniform
+  noise has near-flat PC maps, which makes min-max normalization
+  ill-conditioned and the test dominated by FP32 noise on near-tied maxima.
+- Tolerance is tiered: `0.005` in the realistic illumination range
+  `k in [0.5, 2.0]`, and `0.01`-`0.025` at extreme `k` where the hard
+  `clamp(energy - T, 0)` threshold and FP32 precision interact at the
+  noise-threshold boundary. At `k = 0.1` the signal shrinks 10x so FP32
+  relative error grows 10x; the residual drift is cosmetic, not a model bug.
+
+If you ever need bit-exact invariance at extreme `k`, cast the PC extractor to
+FP64. This is not worth the speed hit during training, but is the only real
+fix for extreme-k FP32 drift.
+
+## Training Pipeline (OOD-hardened, PlantVillage -> PlantDoc)
+
+Every design choice below targets one named failure mode from the prior
+baseline run (99.72% source / 47.71% target, 52-point gap). The pipeline is
+organized into seven phases in `notebooks/PhasePhyto_Colab.ipynb`.
+
+### Phase 1 -- Data Prep (cells 19, 21)
+
+**What.** `DualTransform` returns `(rgb_tensor, clahe_tensor, label)` per
+sample: one RGB view for the ViT stream, one CLAHE-normalized view for the
+illumination stream. A PlantDoc -> PlantVillage class alias map bridges the
+two label namespaces (e.g. `Apple Scab Leaf` -> `Apple___Apple_scab`).
+
+**Why.** The two streams need consistent but differently-preprocessed views of
+the same image. PlantDoc folder names do not match PlantVillage class names,
+so without the alias map the target set is empty, which is what the audit
+script revealed in the first place.
+
+**How.** `phasephyto/data/class_mapping.py` defines the alias dict. Cell 21
+resolves the PlantDoc root across `test/Test/val/valid/base`, normalizes class
+names (case/punct/underscore insensitive), and prints diagnostics (mapped
+rows, skipped rows with reason, unknown folders, source classes with zero
+target coverage).
+
+### Phase 2 -- Strong Paired Augmentation (cell 19)
+
+**What.** Applied in PIL space **before** CLAHE so both streams see the same
+altered image:
+
+- RandAugment (Cubuk et al. 2020)
+- RandomPerspective, GaussianBlur, RandomRotation, stronger ColorJitter
+- Shared-mask RandomErasing (same occlusion on RGB and CLAHE)
+- HSV-saturation-masked background replacement (50% prob): leaf vs background
+  detected by saturation threshold; non-leaf pixels swapped with one of three
+  random styles -- solid noise, gradient, or high-frequency texture.
+
+**Why.** PlantVillage has sterile white/green backgrounds. The baseline
+learned the shortcut "uniform-green background -> healthy leaf" and collapsed
+on PlantDoc's cluttered field backgrounds (hands, soil, bark, sky).
+Background replacement simulates that shift during training so the classifier
+cannot rely on background as a feature.
+
+**How.** Saturation threshold `S > bg_saturation_thresh` masks leaf pixels;
+non-leaf pixels are replaced with a random style. Both streams see the
+replaced image downstream, so features learned are background-agnostic by
+construction.
+
+### Phase 3 -- Three Streams + Fusion + Ablation (cells 25, 26, 28, 30, 32, 34)
+
+**What.**
+
+- **PC stream** (cells 25-26): Log-Gabor filters -> `PhaseCongruencyExtractor`
+  -> PC magnitude / phase symmetry / oriented energy maps -> shallow encoder
+  -> 7x7 structural tokens.
+- **ViT-B/16 stream** (cell 28): 86M pretrained backbone -> 196 patch tokens
+  -> linear projection.
+- **CLAHE stream** (cell 30): illumination-normalized CNN -> auxiliary
+  semantic vector.
+- **Cross-attention fusion** (cell 32): PC tokens = Q, semantic tokens = K/V.
+- **Ablation toggle** (cell 34): `CONFIG["ablation"]` in
+  `{"full", "pc_only", "backbone_only", "no_fusion"}`. Architecture stays
+  identical across modes; only the forward path branches, so parameter counts
+  are comparable.
+
+**Why.**
+
+- PC is *mathematically* amplitude-invariant: `PC(kx) = PC(x)`. Lighting
+  changes destroy pixel gradients but preserve phase structure. This is the
+  only stream that is physics-guaranteed to survive lab-to-field lighting.
+- ViT gives strong semantic priors (ImageNet pretraining) but is pixel
+  intensity dependent.
+- Cross-attention lets the physics-invariant structural tokens **query** the
+  semantic knowledge, rather than averaging streams or concatenating.
+- The ablation toggle produces the evidence table that proves each stream is
+  actually pulling its weight -- without it, we cannot claim fusion helps.
+
+**How.** `PhasePhyto.forward(rgb, clahe)` runs all three streams, fuses, and
+classifies. The ablation branch only decides which pooled tokens feed the
+classification head; the physical modules are unchanged, so PC maps,
+structural tokens, and ViT features are always computed.
+
+### Phase 4 -- Loss and Optimization (cells 39, 41)
+
+**What.**
+
+- **Label-smoothed cross-entropy** (eps=0.1) replaces FocalLoss. FocalLoss is
+  still defined for reproducibility of earlier runs but is unused.
+- **Differential LR:** ViT backbone runs at 10x lower LR than PC / fusion /
+  head via `_build_param_groups`. Warmup is per-group-aware.
+- **Weight EMA** (decay 0.999): a shadow copy updated every step. Validation
+  and checkpointing use EMA weights; final EMA is always saved separately.
+- **Auxiliary PC-only head** (`aux_pc_head` in cell 34): a small classifier
+  on the mean-pooled structural tokens only. Training loss adds
+  `aux_pc_weight * CE(aux_logits, labels)`.
+- **SAM (Foret et al. 2021)** optional: two-step forward/backward that
+  minimizes the sharpness of the loss surface. AMP is disabled when SAM is
+  active (the double forward breaks AMP's backward graph).
+
+**Why.**
+
+- Label smoothing prevents over-confident source logits, which hurt OOD
+  calibration. FocalLoss on a near-saturated source set made this worse.
+- Backbone domination: 86M ViT parameters vs. ~150K PC parameters. Without a
+  lower backbone LR, ViT gradients overwhelm PC gradients and the model
+  degenerates into a regularized ViT that cannot generalize OOD.
+- EMA smooths the weight trajectory. The prior baseline's best val F1 fired
+  at epoch 1 on a near-saturated source -- EMA weights after a few epochs are
+  a better OOD generalizer than that early-epoch best-val point.
+- The auxiliary PC head forces the PC stream alone to be class-discriminative,
+  preventing the ViT stream from nullifying PC gradients just because ViT
+  alone already fits the source.
+- SAM finds flatter minima, which empirically transfer better to shifted
+  distributions.
+
+**How.** `train_epoch` (AMP path) and `train_epoch_sam` (no AMP) are separate
+functions. `ModelEMA` maintains shadow parameters. The training loop branches
+on `CONFIG["use_sam"]` and writes two checkpoints: `best_phasephyto.pt` (best
+val F1) and `final_ema_phasephyto.pt` (end-of-training EMA).
+
+### Phase 5 -- Test-Time Adaptation (cell 45)
+
+**What.**
+
+- **TENT (Wang et al. 2021):** deep-copy the trained model, freeze all
+  parameters except BatchNorm / LayerNorm affines (weight + bias), set BN to
+  `train()` so running stats update, minimize Shannon entropy of target
+  predictions for `tent_steps` steps at `tent_lr`.
+- **hflip TTA:** at evaluation, softmax-average the image and its horizontal
+  flip.
+
+**Why.**
+
+- TENT adapts a trained model to the target distribution without target
+  labels, using only the observation that a well-calibrated model should be
+  confident on the correct class. BN/LN affines have enough degrees of
+  freedom to re-align feature distributions without catastrophic forgetting.
+- hflip TTA is a near-free accuracy gain (plant images are left-right
+  symmetric).
+- Source evaluation runs on the untouched model copy so source metrics stay
+  honest and do not reflect target-side adaptation.
+
+**How.** `tent_adapt(model, target_loader, steps, lr)` returns an adapted
+copy. Cell 45 loads best or final-EMA weights (auto-prefers final-EMA when
+best was saved in `epoch < 2`, which indicates overfitting to source rather
+than learning), runs TENT on a copy for target eval, and evaluates the
+untouched model on source.
+
+### Phase 6 -- Sanity and Invariance Verification (cells 36, 37)
+
+**What.**
+
+- Cell 36 forces `ablation="full"` and asserts PC map shapes and
+  forward/backward success.
+- Cell 37 verifies `PC(k * image) == PC(image)` for
+  `k in {0.1, 0.5, 2, 5, 10}` with tiered tolerance.
+
+**Why.** Amplitude invariance is the *physical claim* the architecture rests
+on. If cell 37 fails the PC stream is not contributing scale-invariant
+features, and the design collapses to a regularized ViT. Worth running before
+every training run.
+
+**How.** Seeded structured test image (sine + cosine stripes + light noise),
+tiered tolerance by realistic illumination range -- see "Numerical Stability"
+above. `self.eps=1e-6` in the PC denominator (NaN-gradient safety per
+CLAUDE.md); `self.sqrt_eps=1e-12` everywhere else (otherwise eps pollutes
+small denominators and breaks invariance).
+
+### Phase 7 -- Ablation and Post-Run Inspection (notebooks 00-04)
+
+**What.** Run the training notebook four times with `CONFIG["ablation"]` set
+to each of `{"full", "pc_only", "backbone_only", "no_fusion"}`. Each run
+writes to its own `runs/<timestamp>_<ablation>/` directory (checkpoints,
+metrics, plots, manifest). The `PhasePhyto_Inspect_*` notebooks tabulate them.
+
+**Why.** This is the evidence that the fusion is doing useful work. If
+`full` ~= `backbone_only`, the PC stream is not helping. If `full` >
+`no_fusion`, cross-attention is genuinely better than simple averaging. Any
+gap-closure claim requires this table.
+
+**How.** `RUN_NAME` auto-suffixes with the ablation key so sequential runs do
+not clobber each other; the inspector notebooks read the manifest across run
+directories and produce the comparison table.
+
+### Phase 7.1.a -- OOD Foreground Segmentation & Diagnostic Hooks (v0.1.15)
+
+**Trigger.** 2026-04-21 `pc_only` ablation (target F1 = 0.08, see
+`RESULTS.md`) showed the PC stream's learned features do not transfer to
+PlantDoc. The most likely cause: PC is computing phase structure over
+PlantVillage studio backgrounds, which do not exist on PlantDoc.
+
+**What.** Five CONFIG knobs in the training notebook, all default off:
+
+| Knob | Type | Purpose |
+|------|------|---------|
+| `leaf_mask_mode` | `"off" | "hsv" | "hsv_blur"` | Gate PC to leaf pixels. `"hsv"` flattens non-leaf pixels to the leaf-mean colour; `"hsv_blur"` replaces them with a gaussian-blurred version of the image. |
+| `leaf_mask_sat_thresh` | int (default 40) | Min HSV saturation to count as foreground. |
+| `leaf_mask_blur_sigma` | float (default 1.5) | Gaussian sigma when `mode == "hsv_blur"`. |
+| `checkpoint_every` | int (default 0) | If `> 0`, save a checkpoint every N epochs to `runs/<ts>/checkpoints/epoch_<N>.pt`. |
+| `target_snapshot_every` | int (default 0) | If `> 0`, run target eval every N epochs during training and record into `history["target_snapshot_*"]`. |
+
+**Why.** The leaf mask is the highest-expected-impact lever given the
+`pc_only` finding: a foreground-gated PC stream has no access to
+background phase structure in the first place, so it cannot learn to
+shortcut on it. The diagnostic hooks exist because source val F1
+saturates early on this recipe (`backbone_only` hit 0.9917 at epoch 3);
+the "best" checkpoint is a poor proxy for target transfer, so we want to
+see target trajectory directly and to keep multiple checkpoints for
+post-hoc selection.
+
+**How.** Applied inside `DualTransform` so the mask gates pixels BEFORE
+both CLAHE and PC computation, and applied to both train and val
+transforms so target (PlantDoc) eval inherits the gating. Planned first
+runs are logged in the `RESULTS.md` pending-runs table:
+`<ts>_full_leafmask` (`"hsv"`) and `<ts>_full_leafmask_blur`
+(`"hsv_blur"`), both with `target_snapshot_every=3` and
+`checkpoint_every=3`.
+
+### Phase 7.1.b -- Pseudo-Label Self-Training (v0.1.16)
+
+**Trigger.** Both `full` and `backbone_only` saturate source validation
+at >= 0.99. When source is this saturated, more source-side
+regularisation has no effect -- only target-side gradient can close the
+remaining gap. Pseudo-labeling is the smallest lever that adds that
+signal.
+
+**What.** After the main training loop, an optional self-training phase
+(cell 43 in the patched notebook):
+
+1. Uses the EMA model (if enabled) to predict on target with no grad.
+2. Keeps samples where `max(softmax) >= pseudo_label_threshold`.
+3. Treats those predictions as ground truth, builds a target dataset
+   with **train-time augmentation** applied.
+4. Fine-tunes on `ConcatDataset(source_subset, pseudo_target)` for
+   `pseudo_label_epochs` epochs at `lr * pseudo_label_lr_mult` with a
+   fresh AdamW optimiser (no SAM -- two-step + noisy labels interacts
+   poorly).
+5. Saves to `pseudo_phasephyto.pt`; the evaluation cell (cell 47)
+   prefers it over best-val / final-EMA checkpoints.
+
+**Knobs.**
+
+| Knob | Default | Purpose |
+|------|---------|---------|
+| `use_pseudo_label` | `True` (as of v0.1.16) | Master toggle. |
+| `pseudo_label_threshold` | `0.9` | Higher -> fewer, cleaner labels. |
+| `pseudo_label_epochs` | `5` | Short fine-tune -- more invites drift. |
+| `pseudo_label_lr_mult` | `0.1` | Of `CONFIG["lr"]`. Low to avoid forgetting. |
+| `pseudo_label_min_samples` | `50` | Skip phase if fewer confident samples. |
+
+**Why it should help here specifically.** PlantDoc class distribution
+is such that most images are leaves similar to something in
+PlantVillage in colour and shape (that is why the class alias map
+works at all). Even a mediocre model produces confidently-correct
+predictions for the easier target classes. Those labeled anchors let
+us fine-tune over the harder classes via shared representations. The
+high confidence threshold plus keeping source in the loss bounds
+confirmation bias.
+
+**What's held as last resort.** DANN with gradient reversal on the
+fused features is architecturally larger (adds a domain discriminator
+branch) and empirically inconsistent on shifts of this kind. Kept in
+ROADMAP Phase 7.1.c for the case where the combined leaf-mask +
+pseudo-label run does not close the gap below 10 points.
+
+**Safety nets added in v0.1.17.**
+
+- Pseudo-label phase prints a target max-softmax decile histogram and
+  counts above common thresholds *before* filtering, so the threshold
+  can be tuned once per dataset rather than by rerunning.
+- `aux_pc_weight` is hard-zeroed during the pseudo-label fine-tune,
+  since `pc_only` already established the PC stream is decorative on
+  OOD and its aux head only wastes fine-tune budget.
+- Full `history` dict (including target snapshots) is written to
+  `RESULTS_DIR/history.json` at end of training so the OOD trajectory
+  survives a kernel restart after training but before eval.
+- Every `torch.save` call embeds the full CONFIG dict, so a checkpoint
+  can be re-attributed to its ablation + knob set months later.
+- A new leaf-mask sanity-viz cell (index 52) renders source + target
+  samples alongside their HSV foreground masks with per-image
+  foreground fraction. Run it once before committing to a 15-epoch run
+  to verify the threshold works for both datasets.
+
+### How the phases compose
+
+Each phase targets one failure mode of the prior 47.71% baseline:
+
+| Failure mode | Addressed by |
+|---|---|
+| Background-as-shortcut | Phase 2 (bg replace), Phase 3 (PC stream is background-agnostic by construction) |
+| ViT dominates PC | Phase 4 (differential LR, auxiliary PC head) |
+| Source over-confidence | Phase 4 (label smoothing, EMA, SAM) |
+| Target distribution drift at eval | Phase 5 (TENT on BN/LN affines, hflip TTA) |
+| Architectural claim unverified | Phase 6 (invariance test), Phase 7 (ablation) |
+| Label-namespace mismatch | Phase 1 (class alias map + audit) |
+| FP32 / eps interaction | Numerical Stability section above (split epsilon) |
+| PC fits source background | Phase 7.1.a (HSV leaf foreground mask) |
+| Best-val checkpoint != best-target | Phase 7.1.a (periodic checkpoint + target snapshot) |
+| Source saturated, no target signal | Phase 7.1.b (pseudo-label self-training on high-confidence target) |
+
+The design is not "try everything and hope" -- each lever maps to a named
+failure mode observed in the prior run, with a mechanism that explains why
+the lever should help **OOD specifically** rather than just boost source
+accuracy.
 
 ## Configuration
 
