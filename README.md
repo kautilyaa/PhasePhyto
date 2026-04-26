@@ -341,6 +341,12 @@ Overlap-ready configs:
 - `configs/apple_overlap_plantdoc.yaml`
 - `configs/apple_overlap_pp2021.yaml`
 
+For a Colab-first, tar-backed workflow that downloads to Drive, archives the
+raw datasets, builds/archives the overlap subset, hydrates to SSD, and then
+trains/evaluates, use:
+
+- `notebooks/PhasePhyto_Apple_Overlap_Colab.ipynb`
+
 ### Makefile Targets
 
 ```bash
