@@ -7,7 +7,6 @@ directory contains classes that the source-trained classifier can predict.
 
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -16,19 +15,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from phasephyto.data.class_mapping import (  # noqa: E402
+    mapped_plantdoc_overlap,
+    normalize_class_name,
+)
 from phasephyto.data.splits import class_counts, resolve_image_folder  # noqa: E402
-
-
-def normalize_class_name(name: str) -> str:
-    """Normalize a class directory name for approximate dataset matching.
-
-    Args:
-        name: Raw class directory name.
-
-    Returns:
-        Lowercase alphanumeric token string with separators collapsed.
-    """
-    return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
 
 
 def audit_overlap(source: Path, target: Path) -> dict[str, Any]:
@@ -56,6 +47,8 @@ def audit_overlap(source: Path, target: Path) -> dict[str, Any]:
         "source_num_classes": len(source_counts),
         "target_num_classes": len(target_counts),
         "overlap_num_classes": len(common_norm),
+        "mapped_overlap_num_classes": len(mapped_plantdoc_overlap(source_counts, target_counts)),
+        "mapped_overlap": mapped_plantdoc_overlap(source_counts, target_counts),
         "overlap": [
             {
                 "normalized": key,

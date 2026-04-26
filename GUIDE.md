@@ -187,6 +187,10 @@ You can also set those paths through `CONFIG["plantvillage_dir"]` and
 
 The notebook trains/validates only on PlantVillage/source data. PlantDoc is used
 only for final target-domain evaluation and baseline comparison.
+PlantDoc folder names differ from PlantVillage folder names, so the notebook
+automatically builds a mapped target folder when exact overlap is zero. For
+example, `Apple Scab Leaf` maps to `Apple___Apple_scab`, and `Corn rust leaf`
+maps to `Corn_(maize)___Common_rust_`.
 
 ### Expected Colab Outputs
 

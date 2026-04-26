@@ -1,0 +1,30 @@
+# Plant Pathology 2021 (FGVC8) apple foliar disease benchmark
+# Uses a normalized ImageFolder layout prepared from the Kaggle competition files.
+
+seed: 42
+device: "cuda"
+checkpoint_dir: "checkpoints/plant_pathology_2021"
+project_name: "phasephyto-plant-pathology-2021"
+
+model:
+  backbone_name: "vit_base_patch16_224"
+  fusion_dim: 256
+  pretrained_backbone: true
+  freeze_backbone: false
+
+training:
+  lr: 5.0e-5
+  weight_decay: 1.0e-2
+  epochs: 30
+  warmup_epochs: 3
+  batch_size: 32
+  patience: 8
+  loss: "focal"
+  focal_gamma: 2.0
+
+data:
+  root: "data/plant_benchmarks/plant_pathology_2021"
+  use_case: "plant_pathology_2021"
+  image_size: 224
+  val_split: 0.2
+  source_dir: "data/plant_benchmarks/plant_pathology_2021"

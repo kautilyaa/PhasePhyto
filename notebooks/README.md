@@ -11,9 +11,15 @@ Run the notebooks in this order:
 3. **Real training/evaluation:** `PhasePhyto_Colab.ipynb` with Drive data paths.
 4. **Inspect saved runs:** `PhasePhyto_Inspect_00_Index.ipynb`.
 5. **Open focused inspectors as needed:** overview, metrics, plots, reports.
+6. **Batch-infer one or more checkpoints over every target image:** `PhasePhyto_Batch_Inference.ipynb`.
 
 If you only want to verify the pipeline quickly, do step 1 only.
 If you want real PlantVillage -> PlantDoc results, do all steps.
+
+If you want a strict shared-label benchmark across PlantVillage, PlantDoc, and
+Plant Pathology 2021, first run `scripts/prepare_overlap_datasets.py` to build
+`data/overlap/apple_strict/`, then point the training/eval CLI or batch
+inference notebook at that overlap root.
 
 ---
 
@@ -223,6 +229,89 @@ Use only the ones you need:
 
 ---
 
+## Step 6: Batch inference across all target images
+
+Notebook:
+
+`PhasePhyto_Batch_Inference.ipynb`
+
+Purpose:
+
+- Run one or more trained PhasePhyto checkpoints over **every** image in a
+  target dataset (PlantDoc or Cassava), not just the 25-class mapped subset
+  used in `RESULTS.md` / `PAPER.md`.
+- Produce per-image, per-model predictions + confidence, a cross-model
+  agreement matrix, and disagreement-entropy plots.
+
+Cell 5 is the only cell you normally edit. It now accepts a nested
+`DATASET_RUNS` dict so you can evaluate the same four trained variants across
+multiple datasets in one sweep. Each dataset run contains:
+
+- `dataset_kind`: `plantdoc`, `cassava`, `plantvillage`, `plant_pathology_2021`, `rocole`, `rice_leaf`, `banana_leaf`, or `custom`
+- `dataset_root`: optional if discoverable from `dataset_manifest.json`
+- `class_to_idx_source`: optional source label-space reference
+- `checkpoints`: dict keyed by the four required ablations
+
+```python
+DATASET_RUNS = {
+    "plantdoc_all": {
+        "dataset_kind": "plantdoc",
+        "class_to_idx_source": "/content/data/plantvillage",
+        "checkpoints": {
+            "full": {"path": ".../full.pt", "name": "full_leafmask"},
+            "backbone_only": ".../backbone_only.pt",
+            "no_fusion": ".../no_fusion.pt",
+            "pc_only": ".../pc_only.pt",
+        },
+    },
+    "cassava_holdout": {
+        "dataset_kind": "cassava",
+        "checkpoints": {
+            "full": ".../cassava_full.pt",
+            "backbone_only": ".../cassava_backbone_only.pt",
+            "no_fusion": ".../cassava_no_fusion.pt",
+            "pc_only": ".../cassava_pc_only.pt",
+        },
+    },
+}
+```
+
+The notebook now performs dataset preflight checks before inference:
+
+- verifies dataset roots exist,
+- resolves nested split layouts like `plantdoc/test`,
+- checks that all four required ablations are present,
+- writes one `dataset_preflight.json` per run plus `dataset_preflight_all.json`.
+
+The `ablation` key still MUST match the value used when the checkpoint was
+trained (otherwise the forward path will not align with the weights).
+
+Outputs (under `OUTPUT_DIR`):
+
+```text
+dataset_run_summary.csv              # one row per dataset run
+<run_name>/
+  per_model/<name>_predictions.csv   # one per checkpoint
+  all_models_predictions.csv         # wide format, one row per image
+  cross_model_agreement.csv          # pairwise top-1 agreement matrix
+  per_class_confidence_hist.png
+  disagreement_entropy.png
+  RUN_SUMMARY.md
+  model_meta.json
+  dataset_preflight.json
+dataset_preflight_all.json
+```
+
+Use it when you want to:
+
+- Calibrate pseudo-label thresholds on the full target set (not just n=153).
+- Probe where the four ablations disagree (high-entropy rows =
+  most informative cases for any future labeling pass).
+- Check whether `full` vs `backbone_only` near-tie on the mapped subset
+  holds up when you widen to all PlantDoc images.
+
+---
+
 ## Recommended real experiment workflow
 
 For an actual result you might report:
@@ -237,6 +326,31 @@ For an actual result you might report:
 
 Do **not** claim domain-shift improvement until the real run has produced saved
 PhasePhyto-vs-baseline metrics in `phasephyto_results.json`.
+
+---
+
+## PlantDoc class-name mapping
+
+PlantDoc folder names do not exactly match PlantVillage folder names. If you see
+`normalized_overlap_num_classes: 0` in `dataset_manifest.json`, that is expected
+for raw names and does not mean evaluation is impossible.
+
+The training notebook now creates a mapped target folder automatically when the
+raw target dataset is empty after exact class matching. Examples:
+
+| PlantDoc folder | PlantVillage source class |
+|---|---|
+| `Apple Scab Leaf` | `Apple___Apple_scab` |
+| `Apple leaf` | `Apple___healthy` |
+| `Corn rust leaf` | `Corn_(maize)___Common_rust_` |
+| `Corn leaf blight` | `Corn_(maize)___Northern_Leaf_Blight` |
+| `Potato leaf early blight` | `Potato___Early_blight` |
+| `Potato leaf late blight` | `Potato___Late_blight` |
+| `Soyabean leaf` | `Soybean___healthy` |
+| `grape leaf black rot` | `Grape___Black_rot` |
+
+Unsupported PlantDoc classes are ignored when the matching PlantVillage source
+class is absent from the current source subset.
 
 ---
 

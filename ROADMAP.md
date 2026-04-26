@@ -27,6 +27,9 @@
   uses explicit labels for PlantDoc confusion matrices.
 - Colab troubleshooting docs include corrupt/unreadable image scanning,
   Drive quarantine, and tar archive recreation after dataset cleanup.
+- PlantDoc -> PlantVillage alias mapping is implemented so raw PlantDoc class
+  names can evaluate against PlantVillage-trained source classes even when exact
+  normalized overlap is zero.
 - Real-data benchmark numbers are **not yet recorded** in this repo; compare
   PhasePhyto and the semantic-only baseline on the same split before making
   claims about field performance.
@@ -334,30 +337,218 @@
 - [ ] Train PhasePhyto on PlantVillage
 - [ ] Evaluate on PlantDoc (zero-shot OOD)
 - [ ] **Target**: PlantDoc F1 > 90% (delta < -5% from in-distribution)
-- [ ] Ablation: PC stream only, backbone only, full fusion
+- [x] Ablation: PC stream only, backbone only, full fusion -- wired into
+  `notebooks/PhasePhyto_Colab.ipynb` via `CONFIG["ablation"]` (v0.1.14);
+  run-directory auto-suffixed so four sequential runs produce independent
+  artifacts. **Ablation table complete as of 2026-04-23**; see `RESULTS.md`:
+  `full+leafmask` (target F1 0.3944), `backbone_only` (target F1 0.3859),
+  `no_fusion` (target F1 0.3464), `pc_only` (target F1 0.0791). Headline:
+  `full` beats `backbone_only` by +0.009 target F1 -- inside noise.
 - [ ] Ablation: contribution of each PC map (magnitude, symmetry, oriented energy)
 
-### 7.2 Use Case 2: Cross-Stain Histology
-- [ ] Train on Safranin-O, test on Toluidine Blue-O and Lugol's Iodine (and all permutations)
-- [ ] **Target**: Cross-stain accuracy drop < 5% compared to within-stain
-- [ ] Visualize PC maps showing stain-invariant cell wall detection
+#### 7.1.a OOD Foreground Segmentation & Diagnostic Hooks (v0.1.15)
+**Trigger**: 2026-04-21 `pc_only` ablation showed PC stream target F1=0.08
+(see `RESULTS.md`). PC features trained on PlantVillage do not transfer to
+PlantDoc, most likely because they fit studio-background phase structure
+absent in field images. Added a cheap HSV-saturation leaf foreground mask
+so the PC stream can be told to ignore background pixels on both train
+and target.
 
-### 7.3 Use Case 3: Pollen Classification
-- [ ] Train on curated microscopy data
-- [ ] Evaluate cross-microscope generalization
-- [ ] **Target**: Maintain 98%+ accuracy across varied microscope configurations
-- [ ] Grad-CAM analysis: verify attention on apertures, not staining artifacts
+- [x] Add CONFIG knobs `leaf_mask_mode`, `leaf_mask_sat_thresh`,
+  `leaf_mask_blur_sigma`, `checkpoint_every`, `target_snapshot_every`
+  (cells 8 + 10 of training notebook).
+- [x] Add `_hsv_leaf_mask()` + `_apply_leaf_mask()` helpers and thread them
+  through `DualTransform` so train and val pipelines both gate non-leaf
+  pixels when enabled (cell 19).
+- [x] Add periodic-checkpoint save and target-domain snapshot inside the
+  training loop so OOD trajectory is visible during training instead of
+  only at the end (cell 42).
+- [x] Run `full` + `leaf_mask_mode="hsv"` + `target_snapshot_every=3`
+  (completed 2026-04-21 as `20260421-202641_full`; target F1 = 0.3944).
+- [ ] Run `full` + `leaf_mask_mode="hsv_blur"` (pending, after first
+  leaf-mask run lands).
+- [ ] Evaluate: if leaf masking alone does not lift target, rely on
+  Phase 7.1.b pseudo-labeling (below) to add target-side gradient.
 
-### 7.4 Use Case 4: Wood Anatomy
-- [ ] Train on XyloTron lab specimens
-- [ ] Evaluate on field specimens
-- [ ] **Target**: Recover majority of the 25% lab-to-field accuracy gap
-- [ ] Visualize vessel boundary detection via PC magnitude
+#### 7.1.b Pseudo-Label Self-Training (v0.1.16)
+**Trigger**: both `full` and `backbone_only` saturate source val >= 0.99,
+so additional source-only regularisation cannot help. Only target-side
+gradient can close the residual gap. Pseudo-labeling is the smallest
+lever that introduces that signal without a full adversarial
+architecture (which is held as last resort, see below).
 
-### 7.5 Cross-Use-Case Analysis
-- [ ] Compare PhasePhyto's generalization gap across all 4 domains
-- [ ] Statistical significance tests (paired t-test / Wilcoxon across random seeds)
-- [ ] Generate publication-ready figures and tables
+- [x] Add CONFIG knobs `use_pseudo_label`, `pseudo_label_threshold`
+  (default 0.9), `pseudo_label_epochs` (default 5), `pseudo_label_lr_mult`
+  (default 0.1), `pseudo_label_min_samples` (default 50). (Cells 8, 10.)
+- [x] Insert pseudo-label phase as a new cell after the main training
+  loop (cell 43 in the patched notebook). Uses EMA model to generate
+  labels, filters by confidence threshold, builds a `ConcatDataset` of
+  source subset + pseudo-labeled target (with train-transform
+  augmentation), fine-tunes for N epochs at `lr * lr_mult`.
+- [x] Save pseudo checkpoint as `pseudo_phasephyto.pt`; cell 47 (shifted
+  from 46 after insertion) prefers it over best-val / final-EMA when
+  present.
+- [ ] Run `full` + leaf-mask + pseudo-label (v0.1.16 default) and record
+  numbers in `RESULTS.md`.
+- [ ] Isolation runs: `full` + leaf-mask only (no pseudo) and `full` +
+  pseudo only (no leaf-mask), to attribute gap-closure per lever.
+
+#### 7.1.a/b polish (v0.1.17)
+- [x] Confidence-histogram print in the pseudo-label cell (deciles +
+  counts above common thresholds) so threshold tuning is visible before
+  filtering. Avoids silent "skipped - too few confident samples" runs.
+- [x] `aux_pc_weight` hard-zeroed during pseudo-label fine-tune. The PC
+  aux head pulls gradients through a non-discriminative pathway on OOD
+  and wastes fine-tune budget.
+- [x] `history` dict dumped to `RESULTS_DIR/history.json` at end of
+  training. Lets post-run inspection notebooks rebuild target-snapshot
+  curves even if the kernel dies before the eval cells run.
+- [x] `config` snapshot embedded in every `torch.save` call (best,
+  periodic, final-EMA, pseudo). Any checkpoint can now be traced back
+  to the full CONFIG it was trained under.
+- [x] Leaf-mask sanity-viz cell (new, index 52). Renders N source and N
+  target images with HSV foreground masks + prints per-image foreground
+  fraction. Pre-flight check for HSV threshold drift.
+- [x] **Amplitude-invariance regression fix** (cell 26):
+  `self.sqrt_eps` was silently changed to `math.sqrt(self.eps)` = 1e-3,
+  floor'd the amplitude at a scale-independent constant and broke
+  invariance at every k. Restored to `1e-12`; anti-regression rule
+  added to `CLAUDE.md`. Numpy repro confirms the fix.
+
+#### 7.1.c DANN / Gradient Reversal (last resort, deferred)
+- [ ] **Hold until 7.1.b pseudo-label is fixed and measured.** If
+  pseudo-label rerun with a calibrated threshold closes the gap to < 10%,
+  DANN is not needed. If it stalls > 20%, add a domain discriminator on
+  the fused features with GRL, train adversarially against the
+  classifier. Under the pivoted framing (see 7.2 below) a DANN negative
+  result is also publishable and stops the lever chase.
+- [ ] Plain-ViT-only ablation row (no PhasePhyto PC / fusion code path
+  at all) for writeup. Cheap to produce once architecture is frozen.
+
+### 7.2 Close-Out for Pivot to Negative-Study Framing (v0.1.18, 2026-04-22)
+
+**Context.** On 2026-04-22 the project pivoted from "physics-informed
+fusion beats a ViT baseline under OOD" to "rigorous negative study of PC
+features under domain shift + practical OOD recipe." See `RESULTS.md`
+"Project Thesis Pivot" section for the full rationale. This phase
+enumerates the minimal remaining experimental work to publish the
+negative study honestly.
+
+- [x] **Finish `backbone_only` ablation.** Completed 2026-04-23
+  (`20260423-XXXXXX_backbone_only`). Target acc 0.5229, F1 0.3859.
+  Outcome (a) landed: `full` (0.5229 / 0.3944) beats `backbone_only`
+  (0.5229 / 0.3859) by 0.000 target acc / +0.009 target F1 -- inside
+  run-to-run noise. The PC stream + cross-attention does not beat a
+  label-smoothed, strongly-augmented ViT under the identical recipe.
+  The recipe is the contribution. See RESULTS.md for the detailed
+  ablation-table analysis and per-class breakdown.
+- [ ] **Rerun Phase 7.1.b pseudo-label with threshold=0.7.** The
+  2026-04-23 `no_fusion` run's cell-43 confidence histogram reported
+  p50=0.812, p95=0.904 on the 153-sample target loader, with only 19
+  samples >=0.9 -- below `pseudo_label_min_samples=50`, so the phase
+  auto-skipped. This matches the `full+leafmask` skip behavior. Threshold
+  0.7 would admit ~87 samples (empirically justified retry, not a guess).
+  Preferably run on top of `backbone_only` given its flatter target
+  trajectory across training (0.3785 at epoch 3 -> 0.4027 at epoch 15,
+  trending up, vs `full+leafmask` which drifts down).
+- [x] **Run `no_fusion` ablation.** Completed 2026-04-23
+  (`20260423-132514_no_fusion`). Target F1 = 0.3464 vs `full+leafmask`
+  0.3944, so cross-attention buys ~0.048 target F1 under an otherwise
+  identical recipe. Modest but non-zero contribution; keep in the
+  published recipe. See RESULTS.md for the full ablation-table cell and
+  per-class breakdown.
+- [ ] **One DANN run (Phase 7.1.c).** Only after pseudo-label is
+  confirmed firing. If DANN also fails to move target past ~0.55, the
+  negative result is complete.
+- [ ] **Optional: best-target-snapshot checkpoint.** Tiny cell-42 patch
+  to save `best_target_phasephyto.pt` when the periodic target snapshot
+  beats the running best. Does not change the headline metric (still
+  selected on source val) but exposes the "best-val != best-target"
+  pathology in every future run without dedicated ablations.
+- [x] **Write-up pass.** Draft manuscript landed 2026-04-23 as `PAPER.md`.
+  Nine sections covering: (1) the OOD-hardening recipe + per-lever deltas,
+  (2) the complete four-cell ablation table with interpretation,
+  (3) the PC transfer failure as a named failure mode
+  (*invariance-classifier-head gap*),
+  (4) the selection-on-source-val pathology demonstrated by target
+  snapshots across all four ablations,
+  (5) limitations (target n=153, missing plain-timm-ViT row, pseudo-label
+  not fired, DANN not run),
+  (6) references.
+  Remaining polish: defensive experiments (plain-timm-ViT row;
+  pseudo-label at threshold 0.7) are optional and marked as write-up-stage
+  future work in the manuscript rather than blocking submission.
+
+### 7.3 Originally-Planned Use Cases 2-4 (DEPRIORITIZED under pivot)
+
+Code and configs remain in the repo. No experimental work currently
+planned. If future work resumes these, the PC claim might recover in
+texture-dominated domains (wood anatomy, pollen), but that is a
+separate study from the pivoted one.
+
+- [ ] Use Case 2 (cross-stain histology) -- out of scope, see pivot.
+- [ ] Use Case 3 (pollen grain classification) -- out of scope, see pivot.
+- [ ] Use Case 4 (wood anatomy) -- out of scope, see pivot.
+
+### 7.4 Cross-Use-Case Analysis (DEPRIORITIZED under pivot)
+
+- [ ] Cross-use-case generalization comparison -- out of scope.
+- [ ] Statistical significance tests across seeds -- still applies to
+  Use Case 1 within the close-out (7.2).
+- [ ] Publication figures -- tracked as part of 7.2 write-up pass.
+
+### 7.5 Dataset Expansion (STAGING as of v0.1.19, not active)
+
+Cassava Leaf Disease (Kaggle) is integrated end-to-end in the data
+pipeline but no training runs have been executed. The integration is
+**staged for future use**, not part of the current 7.2 close-out, and
+sits behind a `CONFIG["dataset"]` flag that defaults to `"plantvillage"`
+(prior behavior preserved byte-for-byte in control flow).
+
+**Integrated (v0.1.19):**
+
+- [x] `scripts/download_data.py --dataset cassava` reorganizes Kaggle's
+  flat `train_images/` + `train.csv` into `<Crop>___<Disease>/` ImageFolder
+  layout (~21k images, 5 classes, ~5.5 GB).
+- [x] Downloader notebook cell added to produce `cassava.tar` in Drive
+  alongside `plantvillage.tar` / `plantdoc.tar`.
+- [x] `CassavaDataset(PlantDiseaseDataset)` thin subclass with
+  `EXPECTED_CLASSES` tuple; registered in `DATASET_MAP` for both
+  `train.py` and `evaluate.py`.
+- [x] Training notebook `CONFIG["dataset"]` selector with stratified
+  80/10/10 train/val/test split for Cassava (single-domain, so the 10%
+  held-out is in-distribution test, not OOD).
+- [x] Eval heading + JSON (`phasephyto_domain_shift.json`) context-aware:
+  labels Cassava evaluation as "IN-DISTRIBUTION HELD-OUT EVALUATION"
+  with `eval_protocol = "in-distribution held-out (Cassava)"`.
+- [x] `tests/test_cassava_dataset.py` (3 tests: ImageFolder load,
+  DATASET_MAP dispatch, 5-class sanity).
+
+**Not yet done (resume items):**
+
+- [ ] Accept Kaggle competition rules at
+  https://www.kaggle.com/competitions/cassava-leaf-disease-classification/rules
+  and run `PhasePhyto_Download_Data_To_Drive.ipynb` with
+  `download_cassava=True` to materialize `cassava.tar`.
+- [ ] First training run on Cassava: set `CONFIG["dataset"] = "cassava"`
+  in Colab cell 10 and run top-to-bottom. Establishes baseline
+  in-distribution test F1 as a reference number; compare to the full
+  OOD recipe without the PC stream.
+- [ ] Protocol note in `RESULTS.md` (new run entry) documenting that
+  Cassava numbers are in-distribution, not OOD transfer.
+- [ ] Optional: identify a true OOD split for Cassava (e.g., train on
+  4 classes, evaluate on all 5; or train on one mobile device's images
+  and test on another if provenance metadata is available). Requires
+  deeper protocol design; not covered by v0.1.19.
+- [ ] Optional: follow-on datasets for further expansion (e.g., Plant
+  Pathology 2021-FGVC8). Infrastructure already supports adding them via
+  the same thin-subclass + `DATASET_MAP` pattern as Cassava.
+
+**Explicit scope constraint:** This dataset expansion is NOT a
+replacement for the 7.2 close-out. Finishing `backbone_only` /
+`no_fusion` / pseudo-label debug / DANN on PV->PD remains the primary
+outstanding work for the pivoted thesis. Cassava is orthogonal runway
+for future sessions.
 
 ---
 
@@ -464,3 +655,8 @@ Phase 0 (Scaffolding)         ✅ COMPLETE
 | `random_split` val subset using train augmentations | Inflated validation metrics | Wrap val subset with `TransformSubset` to override transforms | **Fixed** -- `TransformSubset` in datasets.py, source-only split test, and notebook |
 | Overclaiming domain-shift gains before real benchmarks | Misleading release docs | Ship baseline CLIs and keep claims conditional until same-split results exist | **Mitigated in docs** -- real metrics still pending |
 | FFT phase quantization sensitivity | Accuracy loss when deploying INT8 on edge | Test FP16/FP32 for PC stream separately from backbone | **Open** -- needs Phase 9 investigation |
+| Source val saturates by epoch 1, best-val checkpoint uncorrelated with OOD quality | Early-stopping / model-selection picks wrong epoch for PlantDoc eval | Train fixed budget (15 epochs, patience=0), maintain weight EMA, save final EMA checkpoint; cell 45 auto-prefers final EMA when best-val was saved in epoch<2 | **Mitigated in notebook** -- `Copy_of_PhasePhyto_Colab.ipynb` cells 39/41/45 (v0.1.13) |
+| 86M-param ViT backbone dominates training vs 150K-param PC encoder -> PC features never learn to discriminate | Physics stream contributes little to target F1, architecture reduces to "ViT with extra steps" | Differential LR (backbone at 10x lower LR) + auxiliary PC-only classifier head with aux CE loss weight 0.2 | **Mitigated in notebook** -- `Copy_of_PhasePhyto_Colab.ipynb` cells 34/39 (v0.1.13) |
+| Weak source-side augmentation leaves training distribution far from PlantDoc -> source memorisation | Large source-target gap (-52% acc observed on 2026-04-17 run) | Strong aug stack: RandAugment + RandomPerspective + GaussianBlur + RandomRotation + stronger ColorJitter + shared-mask RandomErasing + HSV-masked background replacement | **Mitigated in notebook** -- `Copy_of_PhasePhyto_Colab.ipynb` cell 19 (v0.1.13) |
+| SAM + AMP GradScaler interaction is fragile | Silent NaNs or divergent training when both are on | When `CONFIG["use_sam"]=True`, disable GradScaler; SAM runs two forward passes in FP32/autocast-off | **Mitigated in notebook** -- cell 39 gates `scaler` on `use_sam` (v0.1.13) |
+| TENT mutates BN running stats on target batches -> cannot reuse the same model object for source eval afterwards | Source metric contaminated by target adaptation | Deep-copy model before TENT; evaluate source on original, target on adapted copy | **Mitigated in notebook** -- cell 45 deep-copies via `tent_adapt()` (v0.1.13) |

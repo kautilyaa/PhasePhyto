@@ -36,7 +36,9 @@ class TrainingConfig:
 @dataclass
 class DataConfig:
     root: str = "data"
-    use_case: str = "plant_disease"  # plant_disease, histology, pollen, wood
+    use_case: str = "plant_disease"
+    # Supported: plant_disease, cassava, plant_pathology_2021, rocole,
+    # rice_leaf, banana_leaf, histology, pollen, wood.
     image_size: int = 224
     num_workers: int = 4
     pin_memory: bool = True

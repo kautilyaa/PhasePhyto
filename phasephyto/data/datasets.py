@@ -1,15 +1,20 @@
 """
-Dataset classes for all four PhasePhyto use cases.
+Dataset classes for all PhasePhyto use cases.
 
 Each dataset returns ``(rgb_tensor, clahe_tensor, label)`` when used with
 the ``DualTransform`` pipeline, or ``(image, label)`` with a standard
 torchvision transform.
 
 Datasets:
-    1. PlantDiseaseDataset -- PlantVillage (lab) / PlantDoc (field)
-    2. HistologyDataset    -- Multi-stain potato tuber microscopy
-    3. PollenDataset       -- Pollen grain microscopy
-    4. WoodDataset         -- XyloTron macroscopic wood anatomy
+    1. PlantDiseaseDataset       -- PlantVillage (lab) / PlantDoc (field)
+    2. CassavaDataset           -- Kaggle Cassava Leaf Disease (single-crop)
+    3. PlantPathology2021Dataset -- Apple foliar disease benchmark (normalized)
+    4. RoCoLeDataset            -- Robusta coffee leaf disease benchmark
+    5. RiceLeafDiseaseDataset   -- Rice leaf disease benchmark
+    6. BananaLeafDiseaseDataset -- Banana leaf disease benchmark
+    7. HistologyDataset         -- Multi-stain potato tuber microscopy
+    8. PollenDataset            -- Pollen grain microscopy
+    9. WoodDataset              -- XyloTron macroscopic wood anatomy
 """
 
 from collections.abc import Callable, Sized
@@ -17,7 +22,14 @@ from pathlib import Path
 from typing import Any, cast
 
 from PIL import Image
-from torch.utils.data import Dataset
+
+try:
+    from torch.utils.data import Dataset
+except ModuleNotFoundError:  # pragma: no cover - lightweight utility imports
+    class Dataset:  # type: ignore[override]
+        """Tiny fallback so dataset metadata can be imported without torch installed."""
+
+        pass
 
 
 class TransformSubset(Dataset):
@@ -121,6 +133,56 @@ class PlantDiseaseDataset(Dataset):
             return result, label
 
         return image, label
+
+
+class CassavaDataset(PlantDiseaseDataset):
+    """Kaggle Cassava Leaf Disease Classification dataset.
+
+    Reuses the ``PlantDiseaseDataset`` ImageFolder loader because
+    ``scripts/download_data.py`` reorganizes the Kaggle flat
+    ``train_images/`` + ``train.csv`` layout into
+    ``<root>/Cassava___<Disease>/<image>.jpg`` at download time.
+
+    Classes are disjoint from PlantVillage (Cassava is not represented in
+    PlantVillage), so cross-dataset evaluation uses a separate class head.
+    The five expected classes are exposed via ``EXPECTED_CLASSES`` for
+    downstream protocol checks.
+
+    Args:
+        root: Path to the Cassava dataset root directory.
+        transform: Callable transform (e.g. ``DualTransform``).
+        class_to_idx: Optional pre-defined class mapping.
+    """
+
+    EXPECTED_CLASSES: tuple[str, ...] = (
+        "Cassava___Bacterial_Blight",
+        "Cassava___Brown_Streak_Disease",
+        "Cassava___Green_Mottle",
+        "Cassava___Mosaic_Disease",
+        "Cassava___healthy",
+    )
+
+
+class PlantPathology2021Dataset(PlantDiseaseDataset):
+    """Normalized Plant Pathology 2021 (FGVC8) apple foliar disease dataset.
+
+    This loader expects the dataset to be pre-arranged into ImageFolder layout
+    (one directory per normalized label or label-combination). The bundled
+    download/preparation helper reorganizes the Kaggle competition files into
+    that layout before training/evaluation.
+    """
+
+
+class RoCoLeDataset(PlantDiseaseDataset):
+    """RoCoLe robusta coffee leaf disease dataset in ImageFolder layout."""
+
+
+class RiceLeafDiseaseDataset(PlantDiseaseDataset):
+    """Rice leaf disease dataset in ImageFolder layout."""
+
+
+class BananaLeafDiseaseDataset(PlantDiseaseDataset):
+    """Banana leaf disease dataset in ImageFolder layout."""
 
 
 class HistologyDataset(Dataset):
