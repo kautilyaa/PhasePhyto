@@ -1,5 +1,6 @@
 """Tests for strict apple-overlap dataset preparation."""
 
+import pytest
 from pathlib import Path
 
 from PIL import Image
@@ -8,7 +9,10 @@ from phasephyto.data.class_mapping import (
     APPLE_STRICT_CLASSES,
     canonicalize_plant_pathology_2021_class,
 )
-from scripts.prepare_overlap_datasets import prepare_apple_overlap
+from scripts.prepare_overlap_datasets import (
+    inspect_apple_overlap,
+    prepare_apple_overlap,
+)
 
 
 def _write_image(path: Path) -> None:
@@ -21,6 +25,28 @@ def test_canonicalize_plant_pathology_2021_class_handles_expected_labels() -> No
     assert canonicalize_plant_pathology_2021_class("scab") == "Apple___Apple_scab"
     assert canonicalize_plant_pathology_2021_class("rust") == "Apple___Cedar_apple_rust"
     assert canonicalize_plant_pathology_2021_class("complex") is None
+
+
+def test_inspect_apple_overlap_reports_missing_classes(tmp_path: Path) -> None:
+    pv_root = tmp_path / "plantvillage"
+    pd_root = tmp_path / "plantdoc" / "test"
+    pp_root = tmp_path / "plant_pathology_2021"
+
+    _write_image(pv_root / "Apple___healthy" / "pv_h.jpg")
+    _write_image(pd_root / "Apple leaf" / "pd_h.jpg")
+    _write_image(pp_root / "healthy" / "pp_h.jpg")
+
+    report = inspect_apple_overlap(
+        plantvillage_root=pv_root,
+        plantdoc_root=tmp_path / "plantdoc",
+        plant_pathology_2021_root=pp_root,
+    )
+
+    assert report["is_complete"] is False
+    assert report["missing_by_dataset"]["plantvillage"] == [
+        "Apple___Apple_scab",
+        "Apple___Cedar_apple_rust",
+    ]
 
 
 def test_prepare_apple_overlap_builds_strict_three_class_subset(tmp_path: Path) -> None:
@@ -65,3 +91,48 @@ def test_prepare_apple_overlap_builds_strict_three_class_subset(tmp_path: Path) 
         for class_name in APPLE_STRICT_CLASSES:
             class_dir = dataset_dir / class_name
             assert any(class_dir.iterdir())
+
+
+def test_prepare_apple_overlap_allow_missing_builds_partial_subset(tmp_path: Path) -> None:
+    pv_root = tmp_path / "plantvillage"
+    pd_root = tmp_path / "plantdoc" / "test"
+    pp_root = tmp_path / "plant_pathology_2021"
+
+    _write_image(pv_root / "Apple___healthy" / "pv_h.jpg")
+    _write_image(pd_root / "Apple leaf" / "pd_h.jpg")
+    _write_image(pp_root / "healthy" / "pp_h.jpg")
+
+    out_root = tmp_path / "overlap_partial" / "apple_strict"
+    report = prepare_apple_overlap(
+        plantvillage_root=pv_root,
+        plantdoc_root=tmp_path / "plantdoc",
+        plant_pathology_2021_root=pp_root,
+        output_root=out_root,
+        mode="copy",
+        require_all_classes=False,
+    )
+
+    assert report["is_complete"] is False
+    assert (out_root / "plantvillage" / "Apple___healthy").exists()
+    assert not (out_root / "plantvillage" / "Apple___Apple_scab").exists()
+
+
+def test_prepare_apple_overlap_strict_mode_raises_clear_error(tmp_path: Path) -> None:
+    pv_root = tmp_path / "plantvillage"
+    pd_root = tmp_path / "plantdoc" / "test"
+    pp_root = tmp_path / "plant_pathology_2021"
+
+    _write_image(pv_root / "Apple___healthy" / "pv_h.jpg")
+    _write_image(pd_root / "Apple leaf" / "pd_h.jpg")
+    _write_image(pp_root / "healthy" / "pp_h.jpg")
+
+    out_root = tmp_path / "overlap_fail" / "apple_strict"
+    with pytest.raises(RuntimeError, match="Strict apple overlap is incomplete"):
+        prepare_apple_overlap(
+            plantvillage_root=pv_root,
+            plantdoc_root=tmp_path / "plantdoc",
+            plant_pathology_2021_root=pp_root,
+            output_root=out_root,
+            mode="copy",
+            require_all_classes=True,
+        )
