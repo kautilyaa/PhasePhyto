@@ -1,4 +1,10 @@
-"""Class-name mappings between PlantDoc and PlantVillage folder conventions."""
+"""Class-name mappings between PlantDoc and PlantVillage folder conventions.
+
+Cassava (Kaggle Cassava Leaf Disease) classes are species-specific
+(``Cassava___*``) and disjoint from PlantVillage, which contains no
+cassava samples. No mapping is provided; Cassava is evaluated with its
+own class head.
+"""
 
 from __future__ import annotations
 
@@ -44,6 +50,18 @@ PLANTDOC_TO_PLANTVILLAGE = {
     "Tomato two spotted spider mites leaf": "Tomato___Spider_mites Two-spotted_spider_mite",
 }
 
+APPLE_STRICT_CLASSES = (
+    "Apple___healthy",
+    "Apple___Apple_scab",
+    "Apple___Cedar_apple_rust",
+)
+
+PLANT_PATHOLOGY_2021_TO_PLANTVILLAGE = {
+    "healthy": "Apple___healthy",
+    "scab": "Apple___Apple_scab",
+    "rust": "Apple___Cedar_apple_rust",
+}
+
 
 def normalize_class_name(name: str) -> str:
     """Normalize class names for coarse class-name comparisons.
@@ -55,6 +73,23 @@ def normalize_class_name(name: str) -> str:
         Lowercase alphanumeric token string with separators collapsed.
     """
     return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+
+
+def canonicalize_plant_pathology_2021_class(name: str) -> str | None:
+    """Map a Plant Pathology 2021 class/folder name to the shared PV label space.
+
+    Supports both the normalized ImageFolder labels created by
+    ``scripts/download_data.py`` (e.g. ``"healthy"``, ``"scab"``, ``"rust"``)
+    and already-canonical PlantVillage-style Apple labels.
+    """
+    if name in APPLE_STRICT_CLASSES:
+        return name
+
+    normalized = normalize_class_name(name)
+    for raw_name, mapped in PLANT_PATHOLOGY_2021_TO_PLANTVILLAGE.items():
+        if normalized == normalize_class_name(raw_name):
+            return mapped
+    return None
 
 
 def mapped_plantdoc_overlap(

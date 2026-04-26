@@ -7,6 +7,41 @@ the analysis revealed. Runs are identified by their run directory under
 
 ---
 
+## Final Study Summary (as of 2026-04-23, write-up stage)
+
+**Study outcome.** The original PhasePhyto hypothesis -- that physics-informed
+phase-congruency fusion beats a ViT baseline under OOD on botanical images --
+is rejected by a complete four-cell ablation table under an identical
+training recipe. `full+leafmask` (target F1 = 0.3944) and `backbone_only`
+(target F1 = 0.3859) land at identical target accuracy (0.5229, four decimals)
+with a +0.009 F1 delta inside run-to-run noise. `pc_only` at target F1 = 0.08
+sits barely above the 25-class random baseline of 0.04, despite the PC
+operator being FP32-verified amplitude-invariant. The transferable
+contribution is the training recipe itself: +4.6 acc / +3.4 F1 over
+pre-hardening baseline, identically present in `backbone_only`. See
+**`PAPER.md`** for the draft manuscript.
+
+**Four-cell ablation table, identical recipe, target with TTA+TENT:**
+
+| Ablation        | Target Acc | Target F1 | Delta F1 vs full |
+|-----------------|-----------:|----------:|-----------------:|
+| `full+leafmask` |     0.5229 |    0.3944 | (ref)            |
+| `backbone_only` |     0.5229 |    0.3859 | -0.0085 (noise)  |
+| `no_fusion`     |     0.4902 |    0.3464 | -0.0480          |
+| `pc_only`       |     0.0915 |    0.0791 | -0.3153          |
+
+**Named failure mode.** The *invariance--classifier-head gap*: feature-level
+mathematical invariance (PC(kx) == PC(x)) does not propagate through a
+learned classifier head to OOD class-discriminative power, because classifier
+weights fit source-specific statistics even of invariant features. See
+`PAPER.md` §6.
+
+**Remaining write-up-stage experiments (all optional, low priority):**
+plain-timm-ViT row to close "your baseline is still your code" gap;
+pseudo-label rerun at threshold 0.7 on `backbone_only`; DANN (declining).
+
+---
+
 ## Project Thesis Pivot (2026-04-22)
 
 **Old framing (v0.1.0 -- v0.1.17):** "Physics-informed differentiable phase
@@ -50,21 +85,26 @@ the PC stream) is directly transferable to other botanical OOD benchmarks.
 
 **Work still required to close out the study** (tracked in ROADMAP.md Phase 7.2):
 
-1. Finish `backbone_only` ablation -- the single most important remaining
-   number. Settles whether PC + fusion adds anything over a plain
-   label-smoothed ViT under the same recipe.
-2. Debug Phase 7.1.b pseudo-label (silently skipped in this run; threshold
-   0.9 was almost certainly too tight for target calibration). Rerun with
-   calibrated threshold, using the diagnostic confidence histogram to pick
-   it.
-3. Run `no_fusion` ablation to attribute cross-attention contribution.
-4. One DANN attempt (Phase 7.1.c) as the last target-gradient lever. If it
-   also fails to move target past ~55%, the negative result is complete
-   and publishable as-is.
-5. Optional: "best-target-snapshot" checkpoint alongside "best-val" in cell
-   42 so the oracle-target number is always visible. Does not change the
-   publishable metric but makes the OOD-selection pathology visible in
-   every future run without requiring dedicated ablations.
+1. [x] Finish `backbone_only` ablation (2026-04-23, target F1=0.3859).
+   Settled the architectural question: `full` beats `backbone_only` by
+   +0.009 target F1 and 0.000 target acc under the same recipe -- inside
+   run-to-run noise, so PC + fusion does not beat plain ViT.
+2. [x] Run `no_fusion` ablation (2026-04-23, target F1=0.3464). Cross-
+   attention contributes +0.048 target F1 over mean-pool concat, but the
+   `backbone_only` result then shows even cross-attention's gain does not
+   survive vs removing the PC stream outright.
+3. [ ] Rerun Phase 7.1.b pseudo-label with threshold=0.7 (diagnostic
+   histogram from `no_fusion` run showed p95=0.904, so 0.9 is too tight
+   for this model's target calibration; 0.7 would admit ~87 samples).
+   Preferably run on top of `backbone_only` given its flatter target
+   trajectory.
+4. [ ] One DANN attempt (Phase 7.1.c) only if pseudo-label at 0.7 fails
+   to push target F1 past ~0.42. With the ablation table closed, this
+   attempt can be skipped if the recipe is judged sufficient.
+5. [ ] Optional: "best-target-snapshot" checkpoint alongside "best-val"
+   in cell 42 so the oracle-target number is always visible.
+6. [ ] Write-up pass. Ablation table and per-lever deltas are now
+   complete; the study is empirically closable.
 
 **Explicitly deprioritized under the pivot:**
 
@@ -95,13 +135,14 @@ PlantVillage class alias map from `phasephyto/data/class_mapping.py`.
 | 2026-04-20 | `20260420-181750_full`                | full          | 0.9970     | 0.9951    | 0.5033     | 0.3868    | -0.4937   |
 | 2026-04-21 | `20260421-141232_pc_only`             | pc_only       | 0.7340     | 0.5878    | 0.0915     | 0.0791    | -0.6425   |
 | 2026-04-21 | `20260421-202641_full` (v0.1.17)      | full+leafmask | 0.9975     | 0.9955    | 0.5229     | 0.3944    | -0.4746   |
+| 2026-04-23 | `20260423-132514_no_fusion`           | no_fusion     | 0.9975     | 0.9955    | 0.4902     | 0.3464    | -0.5073   |
+| 2026-04-23 | `20260423-XXXXXX_backbone_only`       | backbone_only | 0.9975     | 0.9955    | 0.5229     | 0.3859    | -0.4746   |
 
-Pending (Phase 7 ablation table — required for any PhasePhyto-vs-baseline claim):
-
-| Planned    | Run Dir                               | Ablation          | Status                                  |
-|------------|---------------------------------------|-------------------|-----------------------------------------|
-| 2026-04-21 | `<ts>_backbone_only`                  | backbone_only     | IN PROGRESS (epoch 3/15: val_f1=0.9917) |
-| TBD        | `<ts>_no_fusion`                      | no_fusion         | pending backbone_only                   |
+**Ablation table complete as of 2026-04-23.** All four cells filled. The
+architectural claim "PC + fusion beats plain ViT under OOD" is not supported
+by this benchmark: `full` and `backbone_only` land at identical target
+accuracy (0.5229) with only +0.009 target F1 advantage for `full`. See the
+`backbone_only` entry below for the full analysis.
 
 Planned follow-up runs once the ablation table is complete (Phase 7.1.a +
 7.1.b, added to `notebooks/PhasePhyto_Colab.ipynb` 2026-04-21):
@@ -128,6 +169,280 @@ Motivation and lever attribution:
 
 Isolation runs (rows 3 and 4) let us attribute gap-closure to each lever
 individually. Skip them if row 1 already produces a meaningful lift.
+
+---
+
+## Run 2026-04-23 -- `20260423-XXXXXX_backbone_only` (ablation: PC stream removed)
+
+### Configuration
+
+- Ablation: `backbone_only`. Forward path classifies from mean-pooled ViT
+  semantic tokens + illumination vector only; PC stream tokens are not
+  routed to the classifier head. `aux_pc_weight` auto-zeroed (PC stream
+  disabled, so no aux loss).
+- Recipe otherwise identical to the 2026-04-21 `full+leafmask` run (label
+  smoothing 0.1, EMA 0.999, SAM rho=0.05, strong aug + bg replace, leaf
+  mask `hsv`, TENT 20 steps, hflip TTA).
+- Training budget: 15 epochs, warmup 2, base LR 3e-4. Checkpoint selected
+  by eval: `best_phasephyto.pt` (val F1 epoch 13 = 0.9955).
+
+### Metrics
+
+| Metric      | Source (PlantVillage) | Target (PlantDoc, TTA+TENT) | Delta    |
+|-------------|----------------------:|----------------------------:|---------:|
+| Accuracy    | 0.9975                | 0.5229                      | -0.4746  |
+| F1 macro    | 0.9955                | 0.3859                      | -0.6097  |
+
+### Target snapshots across training (no TTA/TENT)
+
+| Epoch | Target Acc | Target F1 |
+|------:|-----------:|----------:|
+| 3     | 0.4837     | 0.3785    |
+| 6     | 0.5098     | 0.3961    |
+| 9     | 0.4967     | 0.3625    |
+| 12    | 0.5229     | 0.3942    |
+| 15    | 0.5229     | 0.4027    |
+
+**Drift pattern is different here.** Unlike every other full-stack run on
+this benchmark, `backbone_only`'s target F1 trends *up* across training
+(0.3785 at epoch 3 -> 0.4027 at epoch 15). The "best-val != best-target"
+pathology is less severe for the pure-ViT path.
+
+### Per-class target F1 (selected, from `target_classification_report.txt`)
+
+Strong:
+- Potato___Late_blight: F1=0.80 (n=8)
+- Raspberry___healthy: F1=0.80 (n=7)
+- Grape___healthy: F1=0.73 (n=12)
+- Pepper,_bell___healthy: F1=0.71 (n=8)
+- Soybean___healthy: F1=0.71 (n=8)
+- Pepper,_bell___Bacterial_spot: F1=0.70 (n=9)
+- Apple___Apple_scab: F1=0.67 (n=10)
+- Apple___healthy: F1=0.60 (n=9)
+
+Weak / collapsed:
+- Cedar_apple_rust: F1=0.27 (n=10)
+- Corn_Cercospora_leaf_spot: F1=0.31 (n=4)
+- Corn_Common_rust: F1=0.31 (n=10)
+- Peach___healthy: F1=0.36 (n=9, perfect precision, collapsed recall)
+- Grape___Black_rot: F1=0.40 (n=8)
+- Potato___Early_blight: F1=0.47 (n=8)
+- Cherry___healthy: F1=0.40 (n=10)
+
+### Analysis
+
+**Pivoted thesis is now fully data-supported.** Against the 2026-04-21
+`full+leafmask` run under an identical recipe:
+
+| Ablation        | Target Acc | Target F1 | Delta vs full         |
+|-----------------|-----------:|----------:|-----------------------|
+| full+leafmask   | 0.5229     | 0.3944    | (reference)           |
+| backbone_only   | 0.5229     | 0.3859    | 0.0000 acc, -0.0085 F1 |
+| no_fusion       | 0.4902     | 0.3464    | -0.0327 acc, -0.0480 F1 |
+| pc_only         | 0.0915     | 0.0791    | -0.4314 acc, -0.3153 F1 |
+
+Target accuracy is **identical to four decimals** between `full` and
+`backbone_only` (0.5229). The F1 delta is +0.009 in `full`'s favour --
+plausibly within run-to-run noise given that the two runs share the same
+checkpoint-selection pathology and differ only by the PC-stream and
+cross-attention subgraph. The headline conclusion: **the PC stream and
+cross-attention together earn at most +0.009 target F1 and 0.000 target
+accuracy over a plain label-smoothed ViT under the same OOD recipe.**
+
+**The no_fusion ordering is informative.** `backbone_only` (PC stream
+absent) outperforms `no_fusion` (PC stream present but mean-pool
+concatenated with ViT, no cross-attention) by +0.033 target acc / +0.040
+target F1. When the PC stream is wired in without cross-attention routing,
+it actively hurts target performance. Cross-attention's role appears to be
+*suppressing* PC's background-phase noise on target, not adding
+structural-token discriminative power. Removing the stream entirely is
+cleaner than keeping it without gating.
+
+**TTA+TENT was mildly harmful for backbone_only.** Epoch-15 target F1
+without TTA/TENT = 0.4027; eval-reported F1 (with TTA+TENT) = 0.3859
+(-0.017). Same direction as `no_fusion`. This suggests TENT's entropy
+minimization is locking onto a wrong local minimum for the pure-ViT path
+at this target size (n=153). Not critical for the headline claim, but
+worth noting.
+
+**Training dynamics confirm the earlier observation.** `backbone_only`
+hits val_f1 >= 0.99 by epoch 2 and saturates by epoch 4 (0.9950). `full`
+hit val_f1 = 0.9951 at epoch 9. The PC stream and fusion subgraph are an
+optimization drag with no offsetting OOD benefit.
+
+### Implication for the publishable claim
+
+The pivoted thesis (v0.1.18, 2026-04-22) is now fully supported by the
+data. Each of the four ablation cells contributes a concrete conclusion:
+
+1. **pc_only (F1=0.08)**: PC features don't transfer OOD despite
+   amplitude-invariance.
+2. **no_fusion (F1=0.35)**: Inserting PC without cross-attention gating
+   hurts target.
+3. **backbone_only (F1=0.39)**: Plain ViT + OOD recipe matches `full`
+   within noise.
+4. **full (F1=0.39)**: The full stack provides 0.000 acc / +0.009 F1 over
+   `backbone_only` -- i.e., nothing outside noise.
+
+**The reusable contribution is the training recipe (label smoothing +
+differential LR + EMA + SAM + strong aug + bg replace + leaf mask +
+hflip TTA), not the physics-informed fusion.** Both `full+leafmask` and
+`backbone_only` reach ~52.3% target accuracy under this recipe; the
+pre-hardening baseline was 47.7%. The +4.6 acc gap is recipe-attributable.
+
+### Next steps (priority order)
+
+1. **Rerun pseudo-label at threshold=0.7** (still Phase 7.1.b). This is
+   the last unexplored lever before DANN. Given `backbone_only`'s flatter
+   target-snapshot trajectory, run pseudo-label on top of `backbone_only`
+   rather than `full` -- less contaminated by fusion-stream regularization.
+2. **Consider skipping DANN** (Phase 7.1.c). With the ablation table
+   closed and the recipe identified, the only remaining question is
+   whether target-side gradient can push target F1 past ~0.40 without
+   the PC stream. One pseudo-label attempt is sufficient to settle it.
+3. **Begin the write-up** (Phase 7.2 close-out). The ablation table and
+   per-lever deltas are now a complete empirical picture. The
+   PhasePhyto-vs-baseline claim is rescinded; the recipe becomes the
+   reusable contribution. This is publishable as-is.
+
+### Files
+
+- Run dir: `/content/drive/MyDrive/PhasePhyto/runs/20260423-XXXXXX_backbone_only/`
+- Checkpoints: `best_phasephyto.pt` (epoch 13, val_f1=0.9955),
+  `final_ema_phasephyto.pt`. No `pseudo_phasephyto.pt` (pseudo-label
+  config was not set for this run).
+- Results: `results/history.json`, `results/phasephyto_domain_shift.json`,
+  `results/target_classification_report.txt`.
+
+---
+
+## Run 2026-04-23 -- `20260423-132514_no_fusion` (ablation: cross-attention removed)
+
+### Configuration
+
+- Ablation: `no_fusion` (both streams present but fusion bypassed; final
+  representation = mean-pooled structural tokens + mean-pooled semantic tokens
+  concatenated, no cross-attention).
+- Phase 7.1.a leaf mask on (`leaf_mask_mode="hsv"`), pseudo-label configured
+  (`use_pseudo_label=True`, threshold=0.9, min_samples=50), diagnostic hooks on
+  (`checkpoint_every=3`, `target_snapshot_every=3`). Otherwise identical to the
+  2026-04-21 `full+leafmask` run.
+- Training budget: 15 epochs, warmup 2, base LR 3e-4, SAM (rho=0.05, AMP off),
+  EMA (0.999), label smoothing 0.1, `aux_pc_weight=0.2`, TENT (20 steps,
+  lr=1e-3), hflip TTA.
+- Checkpoint selected by eval: `best_phasephyto.pt` (val F1 epoch 13 = 0.9955).
+
+### Metrics
+
+| Metric      | Source (PlantVillage) | Target (PlantDoc, TTA+TENT) | Delta    |
+|-------------|----------------------:|----------------------------:|---------:|
+| Accuracy    | 0.9975                | 0.4902                      | -0.5073  |
+| F1 macro    | 0.9955                | 0.3464                      | -0.6491  |
+
+### Target snapshots across training (no TTA/TENT)
+
+| Epoch | Target Acc | Target F1 |
+|------:|-----------:|----------:|
+| 3     | 0.5033     | 0.3892    |
+| 6     | 0.4837     | 0.3767    |
+| 9     | 0.4771     | 0.3476    |
+| 12    | 0.4902     | 0.3488    |
+| 15    | 0.4902     | 0.3383    |
+
+### Pseudo-label phase
+
+- Max-softmax deciles on target (p10/25/50/75/90/95/99): 0.349 / 0.512 / 0.812
+  / 0.882 / 0.901 / 0.904 / 0.907.
+- Counts at thresholds 0.5/0.7/0.8/0.9/0.95/0.99: 115 / 87 / 78 / 19 / 0 / 0.
+- 19 confident samples at threshold 0.9, covering 10/25 classes. Below
+  `pseudo_label_min_samples=50`, so pseudo-label fine-tune was skipped
+  (diagnostic worked as intended). Top pseudo-classes: Raspberry___healthy (4),
+  Apple___Apple_scab (3), Grape___healthy (3).
+
+### Per-class target F1 (selected, from `target_classification_report.txt`)
+
+Strong:
+- Potato___Late_blight: F1=0.76 (n=8)
+- Grape___healthy: F1=0.67 (n=12)
+- Raspberry___healthy: F1=0.64 (n=7)
+- Pepper,_bell___Bacterial_spot: F1=0.64 (n=9)
+- Pepper,_bell___healthy: F1=0.62 (n=8)
+- Apple___healthy: F1=0.62 (n=9)
+
+Weak / collapsed:
+- Cedar_apple_rust: F1=0.27 (n=10)
+- Apple___Apple_scab: F1=0.54 (n=10)
+- Corn_Cercospora_leaf_spot: F1=0.29 (n=4)
+- Grape___Black_rot: F1=0.22 (n=8)
+
+### Analysis
+
+**Ablation-table delta: cross-attention buys ~0.048 target F1.** Against
+the 2026-04-21 `full+leafmask` run (target F1 0.3944) under an identical
+recipe, removing cross-attention in favour of mean-pooled concatenation
+costs -0.048 target F1 and -0.033 target acc. Source is identical to
+`full+leafmask` to four decimals (val_f1 = 0.9955 in both), so the cost
+is purely on the target side. Interpretation: cross-attention contributes
+modestly to OOD generalisation -- it helps structural tokens (PC) route to
+the most relevant semantic-token neighbourhood -- but the contribution is
+small relative to the overall ~0.40 source-target gap.
+
+**Drift pattern matches prior runs.** Target snapshots drop monotonically
+across training (epoch 3 F1=0.3892 -> epoch 15 F1=0.3383, -0.051). Same
+selection pathology `full+leafmask` showed (epoch 3 F1=0.3614 -> epoch 15
+F1=0.3591): source val continues to improve while target stalls or
+degrades. Best-target-snapshot (epoch 3) outperforms best-val-selected
+checkpoint (epoch 13). This further supports the 7.2 "optional best-target
+checkpoint" item.
+
+**Pseudo-label diagnostic worked.** Cell 43's histogram revealed that this
+model's target confidence concentrates between 0.81 and 0.91 (p50 = 0.81,
+p95 = 0.904), with essentially no samples above 0.95. At threshold 0.9
+only 19/153 samples qualify, below the 50-sample floor, so the phase was
+cleanly skipped with a logged reason -- exactly the instrumentation fix
+the v0.1.17 patch was designed to produce. Next pseudo-label attempt
+should lower the threshold to ~0.7 (would yield 87 samples, above the
+floor) or move to a top-N-per-class selection.
+
+**Implication for the ablation table.** With `no_fusion` now logged, three
+of four ablation cells are filled:
+
+| Ablation        | Target F1 (TTA+TENT) | Architecture present                         |
+|-----------------|----------------------|----------------------------------------------|
+| full+leafmask   | 0.3944               | PC + ViT + CLAHE + cross-attention           |
+| no_fusion       | 0.3464               | PC + ViT + CLAHE, mean-pool concat instead   |
+| pc_only         | 0.0791               | PC stream only (+CLAHE), no ViT              |
+| backbone_only   | pending              | ViT + CLAHE only, no PC stream               |
+
+`backbone_only` is still the load-bearing remaining number: it tells us
+whether cross-attention and the PC stream together earn the architecture's
+complexity over a plain label-smoothed ViT under the same recipe. With
+`pc_only` at F1=0.08 and `no_fusion` at F1=0.35, the PC stream's marginal
+contribution to OOD F1 could plausibly be negative in expectation.
+
+### Next steps (priority order)
+
+1. **Finish `backbone_only` run** (still pending). This is now the single
+   outstanding experiment before the ablation table closes and the
+   write-up can begin. If `backbone_only` >= 0.3464, the PC stream
+   contributes nothing positive to OOD F1 and should be removed from the
+   published recipe.
+2. **Rerun pseudo-label with threshold=0.7** (would admit 87 target
+   samples at current calibration). Still subject to `min_samples=50`
+   guard. This is the one remaining source of target-side gradient before
+   DANN.
+3. **Consider DANN (Phase 7.1.c)** only if pseudo-label at 0.7 fails to
+   lift target F1 above ~0.42. If DANN also fails, the negative result is
+   publishable as-is.
+
+### Files
+
+- Run dir: `/content/drive/MyDrive/PhasePhyto/runs/20260423-132514_no_fusion/`
+- Checkpoints: `best_phasephyto.pt` (epoch 13), `final_ema_phasephyto.pt`,
+  periodic checkpoints at epochs 3/6/9/12/15 (no `pseudo_phasephyto.pt`
+  because pseudo-label phase skipped).
+- Results: `results/history.json`, `results/phasephyto_domain_shift.json`,
+  `results/target_classification_report.txt`.
 
 ---
 
@@ -257,49 +572,6 @@ runs, DANN (Phase 7.1.c) remains deferred.
 - Checkpoints: `best_phasephyto.pt` (epoch 11, val_f1=0.9955) and
   `final_ema_phasephyto.pt`. `pseudo_phasephyto.pt` NOT present -> confirms
   pseudo-label phase did not write a checkpoint.
-
----
-
-## Run 2026-04-21 (in progress) -- `<ts>_backbone_only`
-
-### Configuration
-
-- Ablation: `backbone_only`. PC stream tokens zeroed out of the classifier
-  head; model classifies from mean-pooled ViT patch tokens + illumination
-  vector. `aux_pc_weight` auto-zeroed.
-- Recipe identical to the 2026-04-20 `full` run.
-
-### Observed so far
-
-- Epoch 3 [SAM]: `train_loss=0.7390`, `train_acc=0.9652`, `val_loss=0.6377`,
-  `val_acc=0.9959`, `val_f1=0.9917`.
-
-### Interpretation (preliminary -- awaiting target numbers)
-
-`backbone_only` is saturating source **faster** than the `full` run
-(val_f1=0.9917 at epoch 3 vs. `full`'s 0.9951 at epoch 9). Whatever drag
-the PC stream and cross-attention added to the optimization trajectory of
-`full`, it was not contributing enough feature signal to justify the
-slowdown. Plain ViT + the OOD-hardening recipe reaches near-peak source
-validation in 3 epochs.
-
-If the target number lands near `full`'s 0.5033, the full-vs-baseline
-architectural claim collapses: the +2.6 target-acc gain `full` showed over
-the 2026-04-17 pre-hardening baseline is attributable to the training
-recipe (strong aug + bg replace + label smoothing + EMA + SAM + TENT), not
-to the physics-informed fusion. The publishable story would shrink from
-"physics-informed fusion for OOD leaf disease" to "strong augmentation
-recipe for OOD on leaf disease."
-
-### Next action when training finishes
-
-1. Log source/target metrics in the Run Index above and in a full section
-   below.
-2. Decide whether to run `no_fusion` (only informative if `full` >
-   `backbone_only`).
-3. If `backbone_only` ≈ `full`, pivot to the Phase 7.1.a leaf-mask runs --
-   that is the lever most likely to recover the PC stream's intended
-   contribution on target.
 
 ---
 

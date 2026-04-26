@@ -10,12 +10,8 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 
-from phasephyto.data.datasets import (
-    HistologyDataset,
-    PlantDiseaseDataset,
-    PollenDataset,
-    WoodDataset,
-)
+from phasephyto.data.datasets import PlantDiseaseDataset
+from phasephyto.data.registry import DATASET_MAP
 from phasephyto.data.splits import resolve_image_folder
 from phasephyto.data.transforms import get_val_transforms
 from phasephyto.evaluation.domain_shift import evaluate_domain_shift
@@ -23,13 +19,6 @@ from phasephyto.models import PhasePhyto
 from phasephyto.train import _dataset_kwargs
 from phasephyto.utils.config import load_config
 from phasephyto.utils.seed import seed_everything
-
-DATASET_MAP = {
-    "plant_disease": PlantDiseaseDataset,
-    "histology": HistologyDataset,
-    "pollen": PollenDataset,
-    "wood": WoodDataset,
-}
 
 
 def build_eval_datasets(cfg, args):
@@ -58,8 +47,12 @@ def build_eval_datasets(cfg, args):
         or cfg.data.target_dir
         or str(Path(cfg.data.root) / "test")
     )
-    source_dir = resolve_image_folder(source_root, ("test", "val", "valid", "validation"))
-    target_dir = resolve_image_folder(target_root, ("test", "val", "valid", "validation"))
+    source_dir = resolve_image_folder(
+        source_root, ("test", "val", "valid", "validation")
+    )
+    target_dir = resolve_image_folder(
+        target_root, ("test", "val", "valid", "validation")
+    )
 
     # Use-case-specific kwargs
     source_kwargs: dict = _dataset_kwargs(cfg)
@@ -148,8 +141,11 @@ def main():
     print(f"Loaded checkpoint (epoch {checkpoint.get('epoch', '?')})")
 
     results = evaluate_domain_shift(
-        model, source_loader, target_loader,
-        device=device, class_names=source_ds.classes,
+        model,
+        source_loader,
+        target_loader,
+        device=device,
+        class_names=source_ds.classes,
     )
 
     print(f"\n{'='*60}")

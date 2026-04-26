@@ -8,13 +8,8 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader, random_split
 
-from phasephyto.data.datasets import (
-    HistologyDataset,
-    PlantDiseaseDataset,
-    PollenDataset,
-    TransformSubset,
-    WoodDataset,
-)
+from phasephyto.data.datasets import TransformSubset
+from phasephyto.data.registry import DATASET_MAP
 from phasephyto.data.splits import find_split_root, resolve_image_folder
 from phasephyto.data.transforms import get_train_transforms, get_val_transforms
 from phasephyto.models import PhasePhyto
@@ -22,13 +17,6 @@ from phasephyto.training.losses import FocalLoss, LabelSmoothingCE
 from phasephyto.training.trainer import Trainer
 from phasephyto.utils.config import load_config
 from phasephyto.utils.seed import seed_everything
-
-DATASET_MAP = {
-    "plant_disease": PlantDiseaseDataset,
-    "histology": HistologyDataset,
-    "pollen": PollenDataset,
-    "wood": WoodDataset,
-}
 
 
 def _dataset_kwargs(cfg) -> dict:
@@ -97,16 +85,25 @@ def build_dataloaders(cfg):
         if train_size + val_size > len(full_ds):
             train_size = len(full_ds) - val_size
         generator = torch.Generator().manual_seed(cfg.seed)
-        train_ds, raw_val_ds = random_split(full_ds, [train_size, val_size], generator=generator)
+        train_ds, raw_val_ds = random_split(
+            full_ds, [train_size, val_size], generator=generator
+        )
         val_ds = TransformSubset(raw_val_ds, val_tf)
 
     train_loader = DataLoader(
-        train_ds, batch_size=cfg.training.batch_size, shuffle=True,
-        num_workers=cfg.data.num_workers, pin_memory=cfg.data.pin_memory, drop_last=True,
+        train_ds,
+        batch_size=cfg.training.batch_size,
+        shuffle=True,
+        num_workers=cfg.data.num_workers,
+        pin_memory=cfg.data.pin_memory,
+        drop_last=True,
     )
     val_loader = DataLoader(
-        val_ds, batch_size=cfg.training.batch_size, shuffle=False,
-        num_workers=cfg.data.num_workers, pin_memory=cfg.data.pin_memory,
+        val_ds,
+        batch_size=cfg.training.batch_size,
+        shuffle=False,
+        num_workers=cfg.data.num_workers,
+        pin_memory=cfg.data.pin_memory,
     )
     return train_loader, val_loader, num_classes
 
@@ -148,7 +145,10 @@ def main():
 
     train_loader, val_loader, num_classes = build_dataloaders(cfg)
     print(f"Dataset: {cfg.data.use_case} | Classes: {num_classes}")
-    print(f"Train samples: {len(train_loader.dataset)} | Val samples: {len(val_loader.dataset)}")
+    print(
+        f"Train samples: {len(train_loader.dataset)} | "
+        f"Val samples: {len(val_loader.dataset)}"
+    )
 
     model = PhasePhyto(
         num_classes=num_classes,

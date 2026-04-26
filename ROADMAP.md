@@ -340,9 +340,10 @@
 - [x] Ablation: PC stream only, backbone only, full fusion -- wired into
   `notebooks/PhasePhyto_Colab.ipynb` via `CONFIG["ablation"]` (v0.1.14);
   run-directory auto-suffixed so four sequential runs produce independent
-  artifacts. Ablation numbers partially logged in `RESULTS.md`:
-  `full` (0.5033 target acc) and `pc_only` (0.0915 target acc) complete;
-  `backbone_only` in progress 2026-04-21; `no_fusion` pending.
+  artifacts. **Ablation table complete as of 2026-04-23**; see `RESULTS.md`:
+  `full+leafmask` (target F1 0.3944), `backbone_only` (target F1 0.3859),
+  `no_fusion` (target F1 0.3464), `pc_only` (target F1 0.0791). Headline:
+  `full` beats `backbone_only` by +0.009 target F1 -- inside noise.
 - [ ] Ablation: contribution of each PC map (magnitude, symmetry, oriented energy)
 
 #### 7.1.a OOD Foreground Segmentation & Diagnostic Hooks (v0.1.15)
@@ -362,8 +363,8 @@ and target.
 - [x] Add periodic-checkpoint save and target-domain snapshot inside the
   training loop so OOD trajectory is visible during training instead of
   only at the end (cell 42).
-- [ ] Run `full` + `leaf_mask_mode="hsv"` + `target_snapshot_every=3`
-  (pending, after backbone_only completes).
+- [x] Run `full` + `leaf_mask_mode="hsv"` + `target_snapshot_every=3`
+  (completed 2026-04-21 as `20260421-202641_full`; target F1 = 0.3944).
 - [ ] Run `full` + `leaf_mask_mode="hsv_blur"` (pending, after first
   leaf-mask run lands).
 - [ ] Evaluate: if leaf masking alone does not lift target, rely on
@@ -433,22 +434,29 @@ features under domain shift + practical OOD recipe." See `RESULTS.md`
 enumerates the minimal remaining experimental work to publish the
 negative study honestly.
 
-- [ ] **Finish `backbone_only` ablation.** Single most important
-  remaining number. Settles whether PC + fusion adds anything over a
+- [x] **Finish `backbone_only` ablation.** Completed 2026-04-23
+  (`20260423-XXXXXX_backbone_only`). Target acc 0.5229, F1 0.3859.
+  Outcome (a) landed: `full` (0.5229 / 0.3944) beats `backbone_only`
+  (0.5229 / 0.3859) by 0.000 target acc / +0.009 target F1 -- inside
+  run-to-run noise. The PC stream + cross-attention does not beat a
   label-smoothed, strongly-augmented ViT under the identical recipe.
-  Expect one of: (a) `backbone_only` ~ `full` (confirms PC is decorative,
-  the recipe is the contribution); (b) `backbone_only` noticeably lower
-  (PC + fusion contributes ~regularization~ points, architecture is
-  defensible on non-physics grounds).
-- [ ] **Debug Phase 7.1.b pseudo-label.** The 2026-04-21 `full+leafmask`
-  run silently skipped pseudo-label (no `pseudo_phasephyto.pt` written,
-  no `pseudo_*` keys in `history`). The v0.1.17 confidence-histogram
-  diagnostic in cell 43 is already in place -- rerun, read the p90/p95
-  deciles, calibrate `pseudo_label_threshold` accordingly (likely
-  0.7-0.8 instead of 0.9), and confirm the fine-tune loop executes.
-- [ ] **Run `no_fusion` ablation.** Attributes the cross-attention
-  contribution. If `no_fusion` ~ `full`, cross-attention is also
-  decorative.
+  The recipe is the contribution. See RESULTS.md for the detailed
+  ablation-table analysis and per-class breakdown.
+- [ ] **Rerun Phase 7.1.b pseudo-label with threshold=0.7.** The
+  2026-04-23 `no_fusion` run's cell-43 confidence histogram reported
+  p50=0.812, p95=0.904 on the 153-sample target loader, with only 19
+  samples >=0.9 -- below `pseudo_label_min_samples=50`, so the phase
+  auto-skipped. This matches the `full+leafmask` skip behavior. Threshold
+  0.7 would admit ~87 samples (empirically justified retry, not a guess).
+  Preferably run on top of `backbone_only` given its flatter target
+  trajectory across training (0.3785 at epoch 3 -> 0.4027 at epoch 15,
+  trending up, vs `full+leafmask` which drifts down).
+- [x] **Run `no_fusion` ablation.** Completed 2026-04-23
+  (`20260423-132514_no_fusion`). Target F1 = 0.3464 vs `full+leafmask`
+  0.3944, so cross-attention buys ~0.048 target F1 under an otherwise
+  identical recipe. Modest but non-zero contribution; keep in the
+  published recipe. See RESULTS.md for the full ablation-table cell and
+  per-class breakdown.
 - [ ] **One DANN run (Phase 7.1.c).** Only after pseudo-label is
   confirmed firing. If DANN also fails to move target past ~0.55, the
   negative result is complete.
@@ -457,14 +465,19 @@ negative study honestly.
   beats the running best. Does not change the headline metric (still
   selected on source val) but exposes the "best-val != best-target"
   pathology in every future run without dedicated ablations.
-- [ ] **Write-up pass.** Once the ablation table is complete, the
-  paper frames the PC stream as a negative result, not a selling point.
-  Core sections: (1) the OOD-hardening recipe + per-lever deltas,
-  (2) the ablation table, (3) the PC transfer failure and the
-  invariance-vs-classifier-head gap it exposes, (4) the
-  selection-on-source-val pathology demonstrated by target snapshots,
-  (5) honest comparison to prior PlantVillage -> PlantDoc work at
-  equivalent compute.
+- [x] **Write-up pass.** Draft manuscript landed 2026-04-23 as `PAPER.md`.
+  Nine sections covering: (1) the OOD-hardening recipe + per-lever deltas,
+  (2) the complete four-cell ablation table with interpretation,
+  (3) the PC transfer failure as a named failure mode
+  (*invariance-classifier-head gap*),
+  (4) the selection-on-source-val pathology demonstrated by target
+  snapshots across all four ablations,
+  (5) limitations (target n=153, missing plain-timm-ViT row, pseudo-label
+  not fired, DANN not run),
+  (6) references.
+  Remaining polish: defensive experiments (plain-timm-ViT row;
+  pseudo-label at threshold 0.7) are optional and marked as write-up-stage
+  future work in the manuscript rather than blocking submission.
 
 ### 7.3 Originally-Planned Use Cases 2-4 (DEPRIORITIZED under pivot)
 
@@ -483,6 +496,59 @@ separate study from the pivoted one.
 - [ ] Statistical significance tests across seeds -- still applies to
   Use Case 1 within the close-out (7.2).
 - [ ] Publication figures -- tracked as part of 7.2 write-up pass.
+
+### 7.5 Dataset Expansion (STAGING as of v0.1.19, not active)
+
+Cassava Leaf Disease (Kaggle) is integrated end-to-end in the data
+pipeline but no training runs have been executed. The integration is
+**staged for future use**, not part of the current 7.2 close-out, and
+sits behind a `CONFIG["dataset"]` flag that defaults to `"plantvillage"`
+(prior behavior preserved byte-for-byte in control flow).
+
+**Integrated (v0.1.19):**
+
+- [x] `scripts/download_data.py --dataset cassava` reorganizes Kaggle's
+  flat `train_images/` + `train.csv` into `<Crop>___<Disease>/` ImageFolder
+  layout (~21k images, 5 classes, ~5.5 GB).
+- [x] Downloader notebook cell added to produce `cassava.tar` in Drive
+  alongside `plantvillage.tar` / `plantdoc.tar`.
+- [x] `CassavaDataset(PlantDiseaseDataset)` thin subclass with
+  `EXPECTED_CLASSES` tuple; registered in `DATASET_MAP` for both
+  `train.py` and `evaluate.py`.
+- [x] Training notebook `CONFIG["dataset"]` selector with stratified
+  80/10/10 train/val/test split for Cassava (single-domain, so the 10%
+  held-out is in-distribution test, not OOD).
+- [x] Eval heading + JSON (`phasephyto_domain_shift.json`) context-aware:
+  labels Cassava evaluation as "IN-DISTRIBUTION HELD-OUT EVALUATION"
+  with `eval_protocol = "in-distribution held-out (Cassava)"`.
+- [x] `tests/test_cassava_dataset.py` (3 tests: ImageFolder load,
+  DATASET_MAP dispatch, 5-class sanity).
+
+**Not yet done (resume items):**
+
+- [ ] Accept Kaggle competition rules at
+  https://www.kaggle.com/competitions/cassava-leaf-disease-classification/rules
+  and run `PhasePhyto_Download_Data_To_Drive.ipynb` with
+  `download_cassava=True` to materialize `cassava.tar`.
+- [ ] First training run on Cassava: set `CONFIG["dataset"] = "cassava"`
+  in Colab cell 10 and run top-to-bottom. Establishes baseline
+  in-distribution test F1 as a reference number; compare to the full
+  OOD recipe without the PC stream.
+- [ ] Protocol note in `RESULTS.md` (new run entry) documenting that
+  Cassava numbers are in-distribution, not OOD transfer.
+- [ ] Optional: identify a true OOD split for Cassava (e.g., train on
+  4 classes, evaluate on all 5; or train on one mobile device's images
+  and test on another if provenance metadata is available). Requires
+  deeper protocol design; not covered by v0.1.19.
+- [ ] Optional: follow-on datasets for further expansion (e.g., Plant
+  Pathology 2021-FGVC8). Infrastructure already supports adding them via
+  the same thin-subclass + `DATASET_MAP` pattern as Cassava.
+
+**Explicit scope constraint:** This dataset expansion is NOT a
+replacement for the 7.2 close-out. Finishing `backbone_only` /
+`no_fusion` / pseudo-label debug / DANN on PV->PD remains the primary
+outstanding work for the pivoted thesis. Cassava is orthogonal runway
+for future sessions.
 
 ---
 

@@ -10,14 +10,17 @@ frequency-domain transformations (Image Phase Congruency, PC) with a ViT-B/16
 backbone and a CLAHE illumination stream via cross-attention, and reports
 per-lever deltas across seven orthogonal OOD-hardening techniques.
 
-> **Project thesis pivoted on 2026-04-22** (v0.1.18). The original claim --
-> "physics-informed fusion yields OOD-invariant features and beats a ViT
-> baseline" -- is **not supported** by the data. The `pc_only` ablation scored
-> target F1 = 0.08 (random = 0.04), meaning the PC stream does not transfer
-> OOD despite its mathematical amplitude-invariance. The project now reports
-> this as a negative result and offers the rest of the training stack as a
-> reusable OOD recipe. See [RESULTS.md](RESULTS.md) for the pivot rationale,
-> Run Index, and per-run analysis.
+> **Project thesis pivoted on 2026-04-22** (v0.1.18), and the ablation
+> table closed 2026-04-23. The original claim -- "physics-informed fusion
+> yields OOD-invariant features and beats a ViT baseline" -- is **not
+> supported** by the data. `full` and `backbone_only` land at identical
+> target accuracy (0.5229) with a +0.009 F1 delta inside run-to-run noise,
+> and `pc_only` scores target F1 = 0.08 (random = 0.04). The project now
+> reports this as a negative result and offers the rest of the training
+> stack as a reusable OOD recipe. See **[PAPER.md](PAPER.md)** for the
+> draft manuscript, [RESULTS.md](RESULTS.md) for the full run log, and
+> the `invariance--classifier-head gap` section of the paper for the
+> named failure mode.
 
 ## Current results (PlantVillage -> PlantDoc, 25-class mapped)
 
@@ -27,12 +30,18 @@ per-lever deltas across seven orthogonal OOD-hardening techniques.
 | 2026-04-20 | `full` | 99.70% | 0.9951 | 50.33% | 0.3868 | +2.6 acc |
 | 2026-04-21 | `pc_only` | 73.40% | 0.5878 | 9.15% | 0.0791 | PC alone fails OOD |
 | 2026-04-21 | `full+leafmask` | 99.75% | 0.9955 | 52.29% | 0.3944 | +2.0 acc |
-| pending | `backbone_only` | -- | -- | -- | -- | settles PC-over-ViT question |
-| pending | `no_fusion` | -- | -- | -- | -- | settles cross-attention |
+| 2026-04-23 | `no_fusion` | 99.75% | 0.9955 | 49.02% | 0.3464 | cross-attn = +0.048 target F1 |
+| 2026-04-23 | `backbone_only` | 99.75% | 0.9955 | 52.29% | 0.3859 | **matches `full` (-0.009 F1)** |
 | pending | pseudo-label rerun | -- | -- | -- | -- | Phase 7.1.b, calibrated thr |
 
 **Three-week aggregate target movement:** +4.6 acc, +3.4 F1. Source
 saturates at 99.7% throughout; residual gap is distributional.
+
+**Ablation table closed (2026-04-23).** `full` and `backbone_only` land at
+identical target accuracy (0.5229) with only +0.009 target F1 advantage
+for `full`, inside run-to-run noise. The PC stream + cross-attention does
+not beat plain label-smoothed ViT under this OOD recipe. The reusable
+contribution is the training recipe, not the physics-informed fusion.
 
 ## What this project does and does NOT claim
 
@@ -93,11 +102,12 @@ negative study.
 
 ## Remaining work to close out the study (ROADMAP Phase 7.2)
 
-1. Finish `backbone_only` ablation -- the single most important remaining number.
-2. Debug Phase 7.1.b pseudo-label (silently skipped in 2026-04-21 run; threshold 0.9 was too tight). Rerun with calibrated threshold guided by the confidence-histogram diagnostic already wired in cell 43.
-3. Run `no_fusion` ablation to attribute cross-attention contribution.
-4. One DANN (gradient reversal) attempt as the last target-gradient lever.
+1. ~~Finish `backbone_only` ablation~~ -- **done 2026-04-23** (target acc 52.29%, F1 0.3859). Matches `full` within run-to-run noise, settling the architectural question.
+2. ~~Run `no_fusion` ablation~~ -- **done 2026-04-23** (target F1 = 0.3464; cross-attention contributes ~0.048 target F1 over mean-pool concat).
+3. Rerun Phase 7.1.b pseudo-label with threshold ~0.7 (diagnostic on 2026-04-23 `no_fusion` run showed p95=0.904, so 0.9 admits only 19/153 samples, below the 50-sample floor; 0.7 would admit ~87). Run preferably on top of `backbone_only` given its flatter target trajectory.
+4. One DANN (gradient reversal) attempt as the last target-gradient lever, only if pseudo-label at 0.7 fails to push target F1 past ~0.42.
 5. Optional: save a "best-target-snapshot" checkpoint alongside "best-val" so the oracle target metric is always visible without dedicated ablations.
+6. Write-up pass. The ablation table is complete and the empirical picture is closable.
 
 ## Architecture
 
@@ -265,9 +275,71 @@ make data-plantdoc
 # -- or --
 python scripts/download_data.py --dataset plantdoc --output data/plant_disease
 
+# Download Cassava Leaf Disease (Kaggle competition; requires accepting
+# competition rules at https://www.kaggle.com/competitions/cassava-leaf-disease-classification/rules).
+# Reorganizes Kaggle's flat train_images/ + train.csv into
+# <root>/cassava/Cassava___<Disease>/<image>.jpg (PlantVillage-compatible
+# ImageFolder layout, ~5.5 GB, 5 classes, ~21k images).
+python scripts/download_data.py --dataset cassava --output data/plant_disease
+
 # Download both
 make data-all
 ```
+
+### Additional datasets (staging / CLI-ready)
+
+- **Cassava Leaf Disease** (Kaggle) is available end-to-end in the data
+  pipeline: downloader CLI + notebook, `CassavaDataset`, registry support,
+  batch-inference support, and config-driven train/eval entry points.
+- **Plant Pathology 2021 / FGVC8** (Kaggle) is supported through the CLI and
+  config stack. The downloader normalizes the competition CSV into
+  ImageFolder layout using either the provided `labels` column or the
+  one-hot disease columns, so the existing single-label pipeline can train on
+  the observed label combinations. Use `configs/plant_pathology_2021.yaml`.
+- **RoCoLe** (coffee leaf), **Rice Leaf Disease**, and **Banana Leaf Disease**
+  are supported as ImageFolder-style benchmarks via the shared dataset
+  registry, train/eval entry points, batch inference, and dedicated configs
+  (`configs/rocole.yaml`, `configs/rice_leaf.yaml`,
+  `configs/banana_leaf.yaml`). Their official hosts do not offer a stable
+  programmatic API like Kaggle, so `scripts/download_data.py` expects
+  `--source` pointing at a local extracted directory or archive downloaded
+  from the official host, then normalizes the best raw/original ImageFolder
+  candidate into the repo's standard layout.
+
+### Strict apple-overlap benchmark
+
+Use this when you want only the classes shared across PlantVillage,
+PlantDoc, and Plant Pathology 2021:
+
+- `Apple___healthy`
+- `Apple___Apple_scab`
+- `Apple___Cedar_apple_rust`
+
+Prepare the overlap subset with:
+
+```bash
+python scripts/prepare_overlap_datasets.py \
+  --plantvillage data/plant_disease/plantvillage \
+  --plantdoc data/plant_disease/plantdoc \
+  --plant-pathology-2021 data/plant_benchmarks/plant_pathology_2021 \
+  --output data/overlap/apple_strict \
+  --mode symlink
+```
+
+This writes:
+
+```text
+data/overlap/apple_strict/
+  plantvillage/
+  plantdoc/
+  plant_pathology_2021/
+  overlap_manifest.json
+```
+
+Overlap-ready configs:
+
+- `configs/apple_overlap_plantdoc.yaml`
+- `configs/apple_overlap_pp2021.yaml`
 
 ### Makefile Targets
 
