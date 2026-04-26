@@ -1,8 +1,8 @@
 """Tests for strict apple-overlap dataset preparation."""
 
-import pytest
 from pathlib import Path
 
+import pytest
 from PIL import Image
 
 from phasephyto.data.class_mapping import (
