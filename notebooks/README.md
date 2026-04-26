@@ -12,6 +12,7 @@ Run the notebooks in this order:
 4. **Inspect saved runs:** `PhasePhyto_Inspect_00_Index.ipynb`.
 5. **Open focused inspectors as needed:** overview, metrics, plots, reports.
 6. **Batch-infer one or more checkpoints over every target image:** `PhasePhyto_Batch_Inference.ipynb`.
+7. **Apple-overlap end-to-end pipeline with tar-backed Drive storage:** `PhasePhyto_Apple_Overlap_Colab.ipynb`.
 
 If you only want to verify the pipeline quickly, do step 1 only.
 If you want real PlantVillage -> PlantDoc results, do all steps.
@@ -20,6 +21,10 @@ If you want a strict shared-label benchmark across PlantVillage, PlantDoc, and
 Plant Pathology 2021, first run `scripts/prepare_overlap_datasets.py` to build
 `data/overlap/apple_strict/`, then point the training/eval CLI or batch
 inference notebook at that overlap root.
+
+If you want the whole overlap flow pre-wired in Colab — download datasets to
+Drive, create tar archives, build the overlap subset, archive it, hydrate it to
+SSD, then train/evaluate — use `PhasePhyto_Apple_Overlap_Colab.ipynb`.
 
 ---
 
