@@ -43,6 +43,31 @@ for `full`, inside run-to-run noise. The PC stream + cross-attention does
 not beat plain label-smoothed ViT under this OOD recipe. The reusable
 contribution is the training recipe, not the physics-informed fusion.
 
+### Strict 3-class apple-overlap (PV -> PD / PP2021), 2026-04-26
+
+A second benchmark on the **shared apple labels** (`Apple___healthy`,
+`Apple___Apple_scab`, `Apple___Cedar_apple_rust`) across PV, PlantDoc, and
+Plant Pathology 2021. Baseline ViT-B/16 trained on PV only (single seed):
+
+| Target | n | Source Acc | Target Acc | Target F1 | Acc drop | F1 drop |
+|---|---:|---:|---:|---:|---:|---:|
+| PlantDoc test | 29 | 99.96% | 86.21% | 0.8632 | -13.8 pp | -13.6 pp |
+| Plant Pathology 2021 | 11,310 | 99.96% | 71.36% | 0.6813 | -28.6 pp | -31.8 pp |
+
+Per-class drops on PP2021 are asymmetric: `healthy` F1=0.80 (-20 pp),
+`Apple_scab` 0.65 (-35 pp), `Cedar_apple_rust` 0.60 (-40 pp). The
+confusion matrix shows two distinct failure modes -- (a) **healthy bias**
+from PV's class imbalance (37% of actual scab and 9% of actual rust are
+predicted as healthy), and (b) **rust collapses into scab** (43% of actual
+rust). The first is a calibration problem; the second is a feature-shift
+problem. See `Project_Summary.md` for the full per-class breakdown,
+caveats, and suggested follow-ups.
+
+This corroborates the negative-results headline at a tighter,
+fully-overlapping label space (no label-mapping ambiguity), with a
+real-world n=11,310 target. Caveat: single seed; PlantDoc-target n=29 is
+statistically anecdotal.
+
 ## What this project does and does NOT claim
 
 **Does claim:**
@@ -346,6 +371,11 @@ raw datasets, builds/archives the overlap subset, hydrates to SSD, and then
 trains/evaluates, use:
 
 - `notebooks/PhasePhyto_Apple_Overlap_Colab.ipynb`
+
+Sample baseline numbers from this benchmark (single seed, PV-trained ViT-B/16,
+2026-04-26): -13.8 pp accuracy on PlantDoc test (n=29), **-28.6 pp accuracy
+and -31.8 pp F1 on Plant Pathology 2021 (n=11,310)**. Per-class breakdown
+and failure-mode analysis are in `Project_Summary.md`.
 
 ### Makefile Targets
 

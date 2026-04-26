@@ -26,6 +26,26 @@ If you want the whole overlap flow pre-wired in Colab — download datasets to
 Drive, create tar archives, build the overlap subset, archive it, hydrate it to
 SSD, then train/evaluate — use `PhasePhyto_Apple_Overlap_Colab.ipynb`.
 
+### Expected results from the apple-overlap notebook
+
+After flipping `run_train`, `run_eval_plantdoc`, and `run_eval_pp2021` to
+`True` and running end-to-end on a T4 (single seed, ~30–45 min), the
+combined summary cell writes the following baseline numbers to
+`MyDrive/PhasePhyto/checkpoints/apple_overlap_plantdoc/`:
+
+| Target | n | Source Acc | Target Acc | Target F1 | Acc drop | F1 drop |
+|---|---:|---:|---:|---:|---:|---:|
+| PlantDoc test | 29 | 99.96% | 86.21% | 0.8632 | -13.8 pp | -13.6 pp |
+| Plant Pathology 2021 | 11,310 | 99.96% | 71.36% | 0.6813 | -28.6 pp | -31.8 pp |
+
+The PP2021 confusion matrix shows two distinct failure modes: (1) a
+**healthy bias** from PV's class imbalance — 37% of actual scab and 9% of
+actual rust are predicted as healthy; (2) **rust → scab** confusion — 43%
+of actual rust is predicted as scab. Per-class drops and full discussion
+are in `Project_Summary.md`. Treat the PlantDoc-target n=29 number as a
+sanity check only (95% CI ≈ ±13 pp); PP2021 is the statistically
+meaningful target.
+
 ---
 
 ## Step 0: Colab runtime setup

@@ -6,7 +6,7 @@ from contextlib import suppress
 from pathlib import Path
 
 import torch
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, WeightedRandomSampler, random_split
 
 from phasephyto.data.datasets import TransformSubset
 from phasephyto.data.registry import DATASET_MAP
@@ -90,14 +90,35 @@ def build_dataloaders(cfg):
         )
         val_ds = TransformSubset(raw_val_ds, val_tf)
 
-    train_loader = DataLoader(
-        train_ds,
-        batch_size=cfg.training.batch_size,
-        shuffle=True,
-        num_workers=cfg.data.num_workers,
-        pin_memory=cfg.data.pin_memory,
-        drop_last=True,
-    )
+    if cfg.data.balanced_sampler:
+        labels = [int(train_ds[i][1]) for i in range(len(train_ds))]
+        counts = torch.bincount(torch.tensor(labels), minlength=num_classes)
+        per_class_weight = 1.0 / counts.clamp_min(1).double()
+        sample_weights = per_class_weight[torch.tensor(labels)]
+        sampler = WeightedRandomSampler(
+            weights=sample_weights, num_samples=len(sample_weights), replacement=True
+        )
+        train_loader = DataLoader(
+            train_ds,
+            batch_size=cfg.training.batch_size,
+            sampler=sampler,
+            num_workers=cfg.data.num_workers,
+            pin_memory=cfg.data.pin_memory,
+            drop_last=True,
+        )
+        print(
+            f"Balanced sampler enabled. Class counts: {counts.tolist()} -> "
+            "uniform expected sampling."
+        )
+    else:
+        train_loader = DataLoader(
+            train_ds,
+            batch_size=cfg.training.batch_size,
+            shuffle=True,
+            num_workers=cfg.data.num_workers,
+            pin_memory=cfg.data.pin_memory,
+            drop_last=True,
+        )
     val_loader = DataLoader(
         val_ds,
         batch_size=cfg.training.batch_size,

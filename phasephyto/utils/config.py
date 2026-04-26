@@ -43,6 +43,7 @@ class DataConfig:
     num_workers: int = 4
     pin_memory: bool = True
     val_split: float = 0.2
+    balanced_sampler: bool = False
     # Use-case-specific
     stain: str = "all"        # for histology
     domain: str = "all"       # for wood
