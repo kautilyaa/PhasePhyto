@@ -1,0 +1,6 @@
+variant,target_accuracy,target_f1_macro,target_precision_macro,target_recall_macro
+baseline,0.7136,0.6813,0.7414,0.6676
+fix_a_uniform,0.6789,0.6619,0.6543,0.6883
+fix_a_oracle,0.7049,0.6779,0.729,0.6572
+fix_b_full_rebalance,0.7416,0.6969,0.7495,0.6805
+fix_b_softer_rebalance,0.7393,0.7015,0.7416,0.6873

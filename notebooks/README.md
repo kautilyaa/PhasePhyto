@@ -46,25 +46,74 @@ are in `Project_Summary.md`. Treat the PlantDoc-target n=29 number as a
 sanity check only (95% CI ≈ ±13 pp); PP2021 is the statistically
 meaningful target.
 
-### Follow-up fixes notebook
+### Follow-up fixes notebooks (v1 + v2)
 
-`PhasePhyto_Apple_Overlap_Fixes_Colab.ipynb` applies two interventions on
-top of the baseline checkpoint produced above:
+Two companion notebooks apply interventions on top of the baseline
+checkpoint produced above:
 
-- **Fix A**: post-hoc logit adjustment (no retrain, ~5 min on T4) using
-  the PV class prior. With `use_oracle_target_prior=False` (default)
-  assumes a uniform target prior — this turned out **net-negative** on
-  PP2021 because PP2021 isn't actually uniform.
-- **Fix B**: rebalanced retrain via `configs/apple_overlap_plantdoc_rebalanced.yaml`
-  (`data.balanced_sampler: true`, ~30–45 min on T4). **Net-positive in
-  aggregate**: PP2021 0.7136 → 0.7416 acc, 0.6813 → 0.6969 F1; PlantDoc
-  0.8621 → 0.8966 acc, 0.8632 → 0.8965 F1. Trade-off: lifts scab and
-  healthy, slightly hurts rust (small PV rust corpus + heavy oversampling).
+#### `PhasePhyto_Apple_Overlap_Fixes_Colab.ipynb` -- v1
+
+- **Fix A v1**: post-hoc logit adjustment (no retrain, ~5 min on T4)
+  using a uniform target prior (`use_oracle_target_prior=False`,
+  default). **Net-negative** on PP2021: 0.7136 → 0.6789 acc,
+  0.6813 → 0.6619 macro-F1 (−3.5 / −1.9 pp). PP2021 isn't actually
+  uniform (~43% scab / 16% rust / 41% healthy), and the mismatched
+  prior over-corrects rust.
+- **Fix B v1**: rebalanced retrain via
+  `configs/apple_overlap_plantdoc_rebalanced.yaml`
+  (`data.balanced_sampler: true`, default
+  `balanced_sampler_power=1.0`, ~30–45 min on T4).
+  **Net-positive in aggregate**: PP2021 0.7136 → 0.7416 acc,
+  0.6813 → 0.6969 F1; PlantDoc 0.8621 → 0.8966 acc, 0.8632 → 0.8965
+  F1. Trade-off: lifts scab and healthy, slightly hurts rust
+  (3.13× per-epoch oversampling of the small PV rust corpus is too
+  aggressive).
 
 Comparison artifacts (`pp2021_macro_comparison.csv`,
 `pp2021_per_class_comparison.csv`) are written to
-`MyDrive/PhasePhyto/checkpoints/apple_overlap_fixes_comparison/`. Full
-synthesis in `RESULTS.md`; chronological evidence JSONs under `Results/`.
+`MyDrive/PhasePhyto/checkpoints/apple_overlap_fixes_comparison/`.
+
+#### `PhasePhyto_Apple_Overlap_Fixes_v2_Colab.ipynb` -- v2
+
+Designed as falsification tests for the v1 failure modes:
+
+- **Fix A v2 (oracle prior)**: re-runs Fix A with
+  `use_oracle_target_prior=True`, computing the logit shift from the
+  actual PP2021 label distribution. Upper bound on what post-hoc
+  calibration can recover. Result: 0.7049 acc / 0.6779 macro-F1 --
+  **still net-negative vs baseline** (−0.9 / −0.3 pp), isolating
+  the residual gap as feature-shift, not prior.
+- **Fix B v2 (softer rebalance)**: rebalanced retrain with
+  `configs/apple_overlap_plantdoc_rebalanced_softer.yaml` and
+  `balanced_sampler_power=0.5` (sqrt-softened inverse-frequency
+  sampling, ~1.88× per-epoch rust oversampling vs 3.13× under v1).
+  Result: PP2021 0.7393 acc / **0.7015 macro-F1** -- **best on
+  macro-F1** (+2.0 pp over baseline, +0.5 pp over Fix B v1) while
+  recovering most of the rust regression Fix B v1 caused (rust F1
+  −4.3 pp → −1.6 pp vs baseline). PlantDoc lift is identical to
+  Fix B v1 (0.8966 / 0.8965).
+
+The v2 notebook also re-emits a 5-way comparison (baseline + 4
+variants) to
+`MyDrive/PhasePhyto/checkpoints/apple_overlap_fixes_v2_comparison/`:
+`pp2021_macro_comparison_v2.csv`,
+`plantdoc_macro_comparison_v2.csv`,
+`pp2021_per_class_comparison_v2.csv`, and `comparison_summary_v2.json`.
+
+#### Headline (`balanced_sampler_power=0.5`, 2026-04-27)
+
+| Variant | PP2021 Acc | PP2021 F1 | PlantDoc Acc | PlantDoc F1 |
+|---|---:|---:|---:|---:|
+| Baseline | 0.7136 | 0.6813 | 0.8621 | 0.8632 |
+| Fix A v1 (uniform) | 0.6789 | 0.6619 | n/a | n/a |
+| Fix A v2 (oracle) | 0.7049 | 0.6779 | n/a | n/a |
+| Fix B v1 (`power=1.0`) | 0.7416 | 0.6969 | 0.8966 | 0.8965 |
+| **Fix B v2 (`power=0.5`)** | **0.7393** | **0.7015** | **0.8966** | **0.8965** |
+
+Full synthesis (per-class breakdown, sampler-share dry-run vs
+empirical-rust-F1 correspondence, "feature-shift, not prior"
+analysis) is in `RESULTS.md`; chronological evidence JSONs under
+`Results/apple_overlap_*` and `Results/apple_overlap_fixes_*`.
 
 ---
 

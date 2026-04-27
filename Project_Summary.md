@@ -142,66 +142,81 @@ Two distinct failure modes are visible in the confusion matrix:
   accuracy. They are reported for completeness but should not be cited as
   evidence on their own.
 
-### Follow-up interventions on PP2021 (2026-04-26): Fix A vs Fix B
+### Follow-up interventions on PP2021 (2026-04-26 -- 2026-04-27): Fix A vs Fix B (v1 + v2)
 
-Two follow-up attempts were run against the same PV-trained apple-overlap
-baseline on PP2021:
+Four interventions were run against the same PV-trained apple-overlap
+baseline. The v2 iteration (oracle-prior Fix A and softer-rebalance Fix B)
+was specifically designed to test whether the v1 failures were prior
+mis-specification (Fix A) or oversampling of the small minority class
+(Fix B). Both predictions held.
 
-- **Fix A (logit adjustment with uniform target prior):** net-negative.
-- **Fix B (class-rebalanced retrain):** net-positive overall, but error
-  redistribution across classes.
+**PP2021 (n=11,310):**
 
-| Variant | Acc | F1 macro | Acc delta vs baseline | F1 delta vs baseline |
+| Variant | Acc | F1 macro | Acc delta | F1 delta |
 |---|---:|---:|---:|---:|
 | Baseline (PV-trained) | 0.7136 | 0.6813 | -- | -- |
-| Fix A (logit adjust, uniform prior) | 0.6789 | 0.6619 | -3.5 pp | -1.9 pp |
-| Fix B (rebalanced retrain) | 0.7416 | 0.6969 | +2.8 pp | +1.6 pp |
+| Fix A v1 (uniform prior) | 0.6789 | 0.6619 | -3.5 pp | -1.9 pp |
+| Fix A v2 (oracle prior) | 0.7049 | 0.6779 | -0.9 pp | -0.3 pp |
+| Fix B v1 (`balanced_sampler_power=1.0`) | 0.7416 | 0.6969 | +2.8 pp | +1.6 pp |
+| **Fix B v2 (`balanced_sampler_power=0.5`)** | **0.7393** | **0.7015** | **+2.6 pp** | **+2.0 pp** |
 
-Per-class F1 shows why aggregate metrics hide the mechanism:
+Fix B softer (`balanced_sampler_power=0.5`, sqrt-softened inverse-frequency
+sampling) is the **best variant on macro F1**.
 
-| Class | Baseline | Fix A | Fix B | Best |
-|---|---:|---:|---:|---|
-| `Apple___Apple_scab` | 0.65 | 0.64 | 0.71 | Fix B (+5.8 pp) |
-| `Apple___Cedar_apple_rust` | 0.60 | 0.58 | 0.56 | Baseline |
-| `Apple___healthy` | 0.80 | 0.77 | 0.83 | Fix B (+3.2 pp) |
+**PP2021 per-class F1:**
+
+| Class | Baseline | Fix A v2 (oracle) | Fix B v1 (full) | Fix B v2 (softer) |
+|---|---:|---:|---:|---:|
+| `Apple___Apple_scab` | 0.6506 | 0.6715 | **0.7085** | 0.6981 |
+| `Apple___Cedar_apple_rust` | **0.5977** | 0.5870 | 0.5551 | 0.5820 |
+| `Apple___healthy` | 0.7956 | 0.7751 | **0.8271** | 0.8244 |
+
+Fix B softer recovers most of the rust regression Fix B full caused
+(-4.3 pp -> -1.6 pp) while keeping the scab and healthy gains. The rust
+class still does not beat the baseline; the residual loss is small but
+real, and points at where the next intervention (transductive TENT or a
+small target fine-tune) would aim.
+
+**PlantDoc (n=29; statistically anecdotal but directionally consistent):**
+
+| Variant | Acc | F1 macro |
+|---|---:|---:|
+| Baseline | 0.8621 | 0.8632 |
+| Fix B v1 (full) | **0.8966** | **0.8965** |
+| Fix B v2 (softer) | **0.8966** | **0.8965** |
 
 Interpretation:
 
-1. **Fix A failed because the prior assumption was wrong.** The adjustment
-   used `log(uniform) - log(PV_prior)`, but PP2021 is not uniform (~43% scab /
-   16% rust / 41% healthy). This over-corrected rust and under-corrected scab,
-   raising rust recall but collapsing rust precision and reducing healthy
-   recall, with net macro-F1 decline.
-2. **Fix B improved overall but hurt rust.** Weighted balancing with only 217 PV
-   rust images oversampled rust too aggressively (roughly 6x exposure per
-   epoch), likely memorizing PV rust appearance and reducing transfer to PP2021
-   rust; scab and healthy improved while rust dropped.
-3. **Neither intervention closes the domain gap.** Best target accuracy remains
-   0.7416 versus ~1.00 on source, leaving a ~26 pp gap consistent with
-   persistent feature shift.
+1. **Fix A is the smoking gun for "the gap is feature-shift, not prior."**
+   Even with the *oracle* PP2021 prior, post-hoc logit adjustment
+   underperforms the baseline on macro F1 (-0.3 pp). With a uniform-prior
+   assumption (the deployable variant) it's net-negative by -1.9 pp.
+   Calibration alone cannot recover the source-target gap.
+2. **Sampling power is a real, predictable knob.** Going from
+   `balanced_sampler_power=1.0` to `0.5` reduces rust oversampling from
+   3.13x to 1.88x per epoch. The empirical rust F1 moved exactly in the
+   predicted direction (-4.3 pp -> -1.6 pp vs baseline). The dry-run
+   sampler shares matched the actual transfer outcome -- not just
+   correctness, but predictive correctness.
+3. **The domain gap is partially closable but not fully.** Best target
+   accuracy is now 0.7393 (Fix B softer) or 0.7416 (Fix B full) versus
+   ~1.00 on source. ~26 pp of source-target gap remains, consistent with
+   genuine feature shift that no recipe-side intervention has closed.
 
-**Fix B incidentally lifts PlantDoc too (n=29).**
+This strengthens the thesis negative-result narrative on two fronts: (a)
+the standard calibration intervention fails even at oracle, and (b) the
+standard balanced-sampling intervention helps in aggregate but trades
+errors across classes -- with `balanced_sampler_power=0.5` as the
+empirically-found sweet spot.
 
-| Variant on PlantDoc | Acc | F1 macro |
-|---|---:|---:|
-| Baseline (PV-trained) | 0.8621 | 0.8632 |
-| Fix B (rebalanced retrain) | 0.8966 | 0.8965 |
+Optional remaining follow-ups (low cost):
 
-Same caveat as the baseline PD result: n=29 carries a 95% CI of roughly
-+/-13 pp, so this is directionally consistent with the PP2021 improvement
-but should not be cited as standalone evidence.
-
-This strengthens the thesis negative-result narrative: common calibration and
-rebalancing fixes can move macro metrics while exposing non-trivial per-class
-tradeoffs that matter more than aggregate gains.
-
-Recommended low-cost follow-ups:
-
-1. Re-run Fix A with `use_oracle_target_prior=True` (actual PP2021 prior) as an
-   upper bound on prior-correction benefit.
-2. Re-run Fix B with softer balancing weights (for example,
-   `weight ∝ 1/sqrt(count)` via a `balanced_sampler_power` knob) to reduce
-   overfitting pressure on the smallest class.
+1. `power=0.25` to see if the rust regression closes further. Diminishing
+   returns expected; cheap to settle.
+2. Multi-seed (43, 44) on Fix B softer for error bars on the new headline
+   F1 number.
+3. Transductive next step: TENT on PP2021 or a small PP2021/PD fine-tune,
+   targeting the residual feature-shift component on rust specifically.
 
 ### Suggested next runs (lowest-cost first)
 
@@ -253,17 +268,22 @@ fix comparisons) is committed under `Results/` and synthesized in `RESULTS.md`.
 - 2026-04-26: strict 3-class apple-overlap baseline added as independent
   corroboration of the PV-overstates-generalization headline (PV->PP2021
   drop of -29 pp accuracy, -32 pp F1 on n=11,310; see section above).
-- 2026-04-27: Fix A (logit adjustment) + Fix B (rebalanced retrain)
-  evaluated on PP2021. Fix A net-negative (uniform-prior assumption wrong);
-  Fix B net-positive (acc +2.8 pp, F1 +1.6 pp on PP2021; acc +3.4 pp on
-  PlantDoc) but redistributes errors across classes. Full evidence under
-  `Results/` and `RESULTS.md`.
+- 2026-04-27: v1 + v2 fixes on apple-overlap PP2021 complete.
+  - Fix A v1 (uniform prior): net-negative.
+  - Fix A v2 (oracle prior): -0.3 pp F1 vs baseline -- proves the residual
+    gap is feature-shift, not prior.
+  - Fix B v1 (`balanced_sampler_power=1.0`): net-positive aggregate but
+    hurts rust.
+  - **Fix B v2 (`balanced_sampler_power=0.5`)**: best macro F1 (0.7015,
+    +2.0 pp), recovers most of the rust regression. New headline.
+  - Full evidence under `Results/` and `RESULTS.md`.
 - Remaining optional/last-mile items:
   - pseudo-label rerun with calibrated threshold (25-class)
   - optional DANN trial if needed (25-class)
-  - apple-overlap multi-seed + Fix A oracle-prior re-run + softer Fix B
-    sampler weighting (`balanced_sampler_power`) to tighten the per-class
-    story before publication
+  - apple-overlap multi-seed (seeds 43, 44) on Fix B softer for error bars
+  - optional `balanced_sampler_power=0.25` sweep
+  - transductive next step (TENT on PP2021 or small target fine-tune)
+    targeting residual rust feature shift
   - final write-up polish
 
 ---

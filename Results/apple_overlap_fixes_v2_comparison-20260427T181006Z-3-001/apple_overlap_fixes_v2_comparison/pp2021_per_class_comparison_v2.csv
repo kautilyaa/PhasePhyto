@@ -1,0 +1,16 @@
+variant,class,support,precision,recall,f1
+baseline,Apple___Apple_scab,4826,0.724,0.5908,0.6506
+baseline,Apple___Cedar_apple_rust,1860,0.8097,0.4737,0.5977
+baseline,Apple___healthy,4624,0.6905,0.9384,0.7956
+fix_a_uniform,Apple___Apple_scab,4826,0.7023,0.5806,0.6357
+fix_a_uniform,Apple___Cedar_apple_rust,1860,0.4864,0.7188,0.5802
+fix_a_uniform,Apple___healthy,4624,0.7742,0.7654,0.7698
+fix_a_oracle,Apple___Apple_scab,4826,0.6498,0.6948,0.6715
+fix_a_oracle,Apple___Cedar_apple_rust,1860,0.7958,0.4651,0.587
+fix_a_oracle,Apple___healthy,4624,0.7415,0.8119,0.7751
+fix_b_full_rebalance,Apple___Apple_scab,4826,0.7081,0.7089,0.7085
+fix_b_full_rebalance,Apple___Cedar_apple_rust,1860,0.7753,0.4323,0.5551
+fix_b_full_rebalance,Apple___healthy,4624,0.765,0.9003,0.8271
+fix_b_softer_rebalance,Apple___Apple_scab,4826,0.7146,0.6823,0.6981
+fix_b_softer_rebalance,Apple___Cedar_apple_rust,1860,0.7532,0.4742,0.582
+fix_b_softer_rebalance,Apple___healthy,4624,0.7568,0.9053,0.8244

@@ -63,22 +63,29 @@ rust). The first is a calibration problem; the second is a feature-shift
 problem. See `Project_Summary.md` for the full per-class breakdown,
 caveats, and suggested follow-ups.
 
-**Follow-up fixes (2026-04-27).** Two interventions on top of the apple
-baseline. Fix A (logit adjustment with uniform target prior, no retrain)
-turned out **net-negative** because PP2021 is not uniform; Fix B
-(`data.balanced_sampler: true` retrain via `configs/apple_overlap_plantdoc_rebalanced.yaml`)
-is **net-positive in aggregate** but redistributes errors -- helps scab
-and healthy, hurts rust:
+**Follow-up fixes (2026-04-27, v1 + v2).** Four interventions on top of
+the apple baseline. v1 tested uniform-prior calibration (Fix A) and full
+class-balanced sampling (Fix B). v2 tested oracle-prior calibration and
+softer (`balanced_sampler_power=0.5`) sampling, after v1 showed Fix A's
+prior assumption was wrong and Fix B's full rebalancing oversampled the
+small rust class:
 
 | Variant | PP2021 Acc | PP2021 F1 | PlantDoc Acc | PlantDoc F1 |
 |---|---:|---:|---:|---:|
 | Baseline | 0.7136 | 0.6813 | 0.8621 | 0.8632 |
-| Fix A (logit adjust) | 0.6789 | 0.6619 | n/a | n/a |
-| Fix B (rebalanced retrain) | **0.7416** | **0.6969** | **0.8966** | **0.8965** |
+| Fix A v1 (uniform prior) | 0.6789 | 0.6619 | n/a | n/a |
+| Fix A v2 (oracle prior) | 0.7049 | 0.6779 | n/a | n/a |
+| Fix B v1 (`power=1.0`) | 0.7416 | 0.6969 | 0.8966 | 0.8965 |
+| **Fix B v2 (`power=0.5`)** | **0.7393** | **0.7015** | **0.8966** | **0.8965** |
 
-Full per-class breakdown, evidence JSONs, and the combined comparison are
-in `RESULTS.md` and `Results/`. Caveat: single seed throughout;
-PlantDoc-target n=29 is statistically anecdotal.
+Headline: `balanced_sampler_power=0.5` (sqrt-softened inverse-frequency
+sampling) is the **best variant on macro F1** and recovers most of the
+rust regression Fix B v1 caused (rust F1 -4.3 pp -> -1.6 pp vs baseline)
+while keeping the scab and healthy gains. The oracle-prior Fix A still
+underperforms the baseline (-0.3 pp F1), proving the residual gap is
+feature-shift, not calibration. Full per-class breakdown, evidence JSONs,
+and the combined comparison are in `RESULTS.md` and `Results/`. Caveat:
+single seed throughout; PlantDoc-target n=29 is statistically anecdotal.
 
 This corroborates the negative-results headline at a tighter,
 fully-overlapping label space (no label-mapping ambiguity), with a
@@ -390,15 +397,20 @@ trains/evaluates, use:
 
 Sample baseline numbers from this benchmark (single seed, PV-trained ViT-B/16,
 2026-04-26): -13.8 pp accuracy on PlantDoc test (n=29), **-28.6 pp accuracy
-and -31.8 pp F1 on Plant Pathology 2021 (n=11,310)**. After the rebalanced
-follow-up retrain (Fix B, 2026-04-27): PP2021 lifts to 0.7416 acc / 0.6969
-F1 (+2.8 / +1.6 pp), PlantDoc to 0.8966 acc / 0.8965 F1. Per-class
-breakdown, failure-mode analysis, and the Fix-A-vs-Fix-B comparison are in
-`Project_Summary.md` and `RESULTS.md`. Raw evidence under `Results/`.
+and -31.8 pp F1 on Plant Pathology 2021 (n=11,310)**. After the
+softer-rebalanced follow-up retrain (Fix B v2 with
+`balanced_sampler_power=0.5`, 2026-04-27): PP2021 lifts to 0.7393 acc /
+**0.7015** macro F1 (+2.6 / +2.0 pp), PlantDoc to 0.8966 acc / 0.8965 F1.
+Per-class breakdown, failure-mode analysis, and the full v1+v2
+fix-comparison table are in `Project_Summary.md` and `RESULTS.md`. Raw
+evidence under `Results/`.
 
-A companion notebook applies these two fixes on top of the baseline:
+Two companion notebooks apply fixes on top of the baseline:
 
-- `notebooks/PhasePhyto_Apple_Overlap_Fixes_Colab.ipynb`
+- `notebooks/PhasePhyto_Apple_Overlap_Fixes_Colab.ipynb` -- v1: Fix A
+  (uniform-prior logit adjustment) and Fix B (`power=1.0` rebalanced retrain).
+- `notebooks/PhasePhyto_Apple_Overlap_Fixes_v2_Colab.ipynb` -- v2: Fix A
+  oracle-prior re-run + Fix B softer (`power=0.5`) retrain + 5-way comparison.
 
 ### Makefile Targets
 

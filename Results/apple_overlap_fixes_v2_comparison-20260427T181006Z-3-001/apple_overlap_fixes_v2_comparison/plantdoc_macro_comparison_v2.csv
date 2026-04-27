@@ -1,0 +1,4 @@
+variant,target_accuracy,target_f1_macro,target_precision_macro,target_recall_macro
+baseline,0.8621,0.8632,0.863,0.8667
+fix_b_full_rebalance,0.8966,0.8965,0.8963,0.9
+fix_b_softer_rebalance,0.8966,0.8965,0.8963,0.9

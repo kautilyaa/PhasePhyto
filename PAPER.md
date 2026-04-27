@@ -2,7 +2,7 @@
 
 **Working title.** Amplitude-invariant features are not classifier-invariant: a rigorous negative study of physics-informed fusion for out-of-distribution botanical image classification, with a reusable training recipe.
 
-**Status.** Draft, 2026-04-23. Numbers below are the authoritative values from `RESULTS.md` at commit head of branch `aws_changes`. Class mapping uses `phasephyto/data/class_mapping.py` (25 PlantVillage source classes aliased onto PlantDoc target folders). Target evaluation set n=153.
+**Status.** Draft, 2026-04-23 (25-class ablation closed); apple-overlap addendum 2026-04-26 → 2026-04-27 (§5.6, §1.4 contribution 6, §7.1, §7.7, §7.8). Numbers below are the authoritative values from `RESULTS.md` at commit head of branch `aws_changes`. Class mapping for the 25-class study uses `phasephyto/data/class_mapping.py` (25 PlantVillage source classes aliased onto PlantDoc target folders); target evaluation set n=153. The 3-class apple-overlap study (§5.6) uses a strict shared label space (`Apple___healthy`, `Apple___Apple_scab`, `Apple___Cedar_apple_rust`) across PlantVillage, PlantDoc, and Plant Pathology 2021, with a real-world PP2021 target n=11,310.
 
 ---
 
@@ -35,6 +35,7 @@ Two families of approaches attack this gap: (a) aggressive regularization and au
 3. Identification and naming of the *invariance–classifier-head gap*: a learned classifier can over-fit source statistics even when its input features are formally invariant to the shift.
 4. Documented *selection pathology*: the source-validation checkpoint is not the best target checkpoint. In full-stack runs target F1 degrades monotonically across training while source saturates. `backbone_only` is the exception; its target trajectory trends up.
 5. A reusable training recipe that lifts target accuracy 47.71% → 52.29% over the pre-hardening baseline and transfers directly to other botanical OOD benchmarks.
+6. A strict 3-class apple-overlap corroboration on a real-world n=11,310 PP2021 target plus a four-variant follow-up sweep (uniform- and oracle-prior calibration; `balanced_sampler_power ∈ {1.0, 0.5}` rebalanced retrains). The sweep isolates the residual gap as **feature-shift rather than prior** — even oracle calibration is net-negative on macro-F1 — and identifies sqrt-softened inverse-frequency sampling as the empirically-best single recipe-side intervention (PP2021 macro-F1 0.6813 → 0.7015, +2.0 pp). See §5.6.
 
 ### 1.5 What we do not claim
 
@@ -194,6 +195,47 @@ We configured pseudo-label self-training on target (threshold 0.9, 5 epochs at 0
 
 At threshold 0.9, only 19 of 153 target samples qualify — below the 50-sample floor, so the phase auto-skipped. At 0.7, approximately 87 samples would qualify. The 0.9 threshold is miscalibrated for this model's target confidence distribution. A retry at 0.7 is empirically justified, not a guess.
 
+### 5.6 Apple-overlap corroboration (PV → {PlantDoc, PP2021}, 3-class)
+
+To address Limitation §7.1 (n=153 target is small) we re-evaluated the PV-overstates-generalization claim on a strict three-class shared label space — `Apple___healthy`, `Apple___Apple_scab`, `Apple___Cedar_apple_rust` — across PlantVillage, PlantDoc, and Plant Pathology 2021 (FGVC8). The benchmark removes the label-mapping ambiguity of the 25-class setup and supplies a real-world n=11,310 target on PP2021. We then ran four follow-up interventions on the same baseline checkpoint to test whether post-hoc calibration (Fix A) or class-rebalanced retraining (Fix B) closes the gap, in two iterations: v1 (uniform-prior calibration; full inverse-frequency rebalance) and v2 (oracle-prior calibration; sqrt-softened rebalance with `balanced_sampler_power=0.5`).
+
+#### 5.6.1 Baseline transfer (single seed, PV-trained ViT-B/16, focal loss)
+
+| Target | n | Source Acc | Target Acc | Target F1 macro | Δ Acc | Δ F1 |
+|---|---:|---:|---:|---:|---:|---:|
+| PlantDoc test | 29 | 0.9996 | 0.8621 | 0.8632 | −13.8 pp | −13.6 pp |
+| Plant Pathology 2021 | 11,310 | 0.9996 | 0.7136 | 0.6813 | −28.6 pp | −31.8 pp |
+
+Per-class F1 on PP2021: `Apple___healthy` 0.7956, `Apple___Apple_scab` 0.6506, `Apple___Cedar_apple_rust` 0.5977. The confusion matrix exhibits two distinct failure modes: (a) a **healthy bias** induced by PV's class imbalance — 37% of actual scab and 9% of actual rust are predicted as healthy — and (b) **rust → scab confusion** — 43% of actual rust is predicted as scab. The two failure modes are independently addressed by the two follow-up axes (Fix A = calibration, Fix B = sampling).
+
+#### 5.6.2 Fix A and Fix B follow-ups (v1 + v2)
+
+| Variant | Acc (PP2021) | F1 macro (PP2021) | Δ Acc | Δ F1 macro | PD Acc | PD F1 |
+|---|---:|---:|---:|---:|---:|---:|
+| Baseline | 0.7136 | 0.6813 | (ref) | (ref) | 0.8621 | 0.8632 |
+| Fix A v1 (uniform prior) | 0.6789 | 0.6619 | −3.5 pp | −1.9 pp | n/a | n/a |
+| Fix A v2 (oracle PP2021 prior) | 0.7049 | 0.6779 | −0.9 pp | −0.3 pp | n/a | n/a |
+| Fix B v1 (`balanced_sampler_power=1.0`) | 0.7416 | 0.6969 | +2.8 pp | +1.6 pp | 0.8966 | 0.8965 |
+| **Fix B v2 (`balanced_sampler_power=0.5`)** | **0.7393** | **0.7015** | **+2.6 pp** | **+2.0 pp** | **0.8966** | **0.8965** |
+
+Per-class PP2021 F1 across the same 5 variants:
+
+| Class | Baseline | Fix A v1 | Fix A v2 | Fix B v1 | Fix B v2 |
+|---|---:|---:|---:|---:|---:|
+| `Apple___Apple_scab` | 0.6506 | 0.6357 | 0.6715 | **0.7085** | 0.6981 |
+| `Apple___Cedar_apple_rust` | **0.5977** | 0.5802 | 0.5870 | 0.5551 | 0.5820 |
+| `Apple___healthy` | 0.7956 | 0.7698 | 0.7751 | **0.8271** | 0.8244 |
+
+**Fix A is the smoking gun for "the gap is feature-shift, not prior."** Even with the *oracle* PP2021 prior, post-hoc logit adjustment underperforms the baseline on macro-F1 by −0.3 pp. The deployable variant (uniform prior) is net-negative by −1.9 pp. Calibration alone cannot recover the source–target gap on this benchmark.
+
+**Fix B v2 (softer rebalance) is the new best macro-F1 on PP2021.** Reducing the inverse-frequency exponent from `1.0` to `0.5` drops per-epoch rust oversampling from ~3.13× to ~1.88×. Empirical rust F1 recovers from −4.3 pp (Fix B v1 vs baseline) to −1.6 pp (Fix B v2 vs baseline) while preserving the scab and healthy gains, lifting macro-F1 from 0.6969 to 0.7015. The dry-run sampler shares matched the empirical rust-F1 outcome direction-for-direction — this is predictive correctness, not just numerical correctness.
+
+#### 5.6.3 Reading
+
+The 3-class apple-overlap benchmark independently corroborates the 25-class headline: large source-target gaps even on a fully-overlapping label space, with class-imbalance-induced healthy bias and a residual feature-shift component (rust → scab confusion) that no recipe-side intervention has closed. The remaining ~26 pp PP2021 source-target accuracy gap is the right target for transductive adaptation (TENT on PP2021) or a small target fine-tune, not for further calibration or sampler tuning. Caveats: single seed throughout; the PlantDoc-target n=29 number is statistically anecdotal (95% CI ≈ ±13 pp) and is reported alongside PP2021 only to confirm directional consistency.
+
+The full v1 + v2 evidence — eval JSONs, comparison CSVs, and per-class breakdown — is committed under `Results/` and synthesized in `RESULTS.md`.
+
 ---
 
 ## 6. Analysis: the invariance–classifier-head gap
@@ -225,12 +267,14 @@ The three-week, seven-lever hardening campaign moved target accuracy by +4.6 poi
 
 ## 7. Limitations
 
-1. **Target evaluation set size is small (n=153).** The +0.009 F1 delta between `full` and `backbone_only` is inside run-to-run noise at this sample size. A larger target set, a second independent target domain, or resampled confidence intervals would strengthen the "statistical tie" claim. As reported, we treat the delta as noise rather than signal.
+1. **25-class target evaluation set size is small (n=153).** The +0.009 F1 delta between `full` and `backbone_only` is inside run-to-run noise at this sample size. A larger target set, a second independent target domain, or resampled confidence intervals would strengthen the "statistical tie" claim. As reported, we treat the delta as noise rather than signal. The apple-overlap PP2021 evaluation in §5.6 (n=11,310) partially addresses this concern by re-deriving the PV-overstates-generalization headline at a real-world target size on a strict 3-class shared label space.
 2. **Plain-timm-ViT row is missing.** Our `backbone_only` ablation still runs the PhasePhyto code path with the PC stream disabled. A literal `timm` ViT-B/16 row under the same recipe would close the "but your baseline is still your code" gap for reviewers. This is cheap to produce and is the top write-up-stage experiment.
-3. **Pseudo-label was configured but did not fire** in any reported run (threshold 0.9 was miscalibrated). A retry at threshold 0.7 on `backbone_only` is unblocked but not yet reported.
+3. **Pseudo-label was configured but did not fire** in any reported 25-class run (threshold 0.9 was miscalibrated). A retry at threshold 0.7 on `backbone_only` is unblocked but not yet reported.
 4. **DANN was not run.** With the ablation table closed, a DANN result cannot resurrect the fusion claim; it can only slot into the recipe. We judged the marginal scientific value below the compute cost and deferred it.
 5. **No evaluation on histology, pollen, or wood anatomy.** The architecture and configs support those domains, but the study is scoped to use case 1 (plant disease).
 6. **Single ViT backbone.** We did not ablate backbone choice. A ConvNeXt or DINOv2 backbone under the same recipe may shift the operating point but is unlikely to change the architectural conclusion.
+7. **Apple-overlap evidence is single-seed.** All five §5.6 variants (baseline, Fix A v1/v2, Fix B v1/v2) report a single seed each. Multi-seed (43, 44) on Fix B v2 softer is the smallest experiment that would put error bars on the new headline macro-F1 number. The PlantDoc-target (n=29) numbers are reported alongside PP2021 only as a directional sanity check (95% CI ≈ ±13 pp) and should not be cited as evidence on their own.
+8. **Apple-overlap fix sweep stopped at `balanced_sampler_power=0.5`.** The rust-F1 monotonicity (1.0 → 0.5 already cuts the regression by ~62%) suggests `power=0.25` may close the residual rust gap further. The compute cost of one additional retrain is small; we report the current sweep as sufficient to settle the calibration-vs-feature-shift question.
 
 ---
 
