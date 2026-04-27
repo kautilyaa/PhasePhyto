@@ -6,7 +6,7 @@ from contextlib import suppress
 from pathlib import Path
 
 import torch
-from torch.utils.data import DataLoader, WeightedRandomSampler, random_split
+from torch.utils.data import DataLoader, Subset, WeightedRandomSampler, random_split
 
 from phasephyto.data.datasets import TransformSubset
 from phasephyto.data.registry import DATASET_MAP
@@ -45,6 +45,23 @@ def _source_root(cfg) -> Path:
         Path to the configured source root, falling back to ``data.root``.
     """
     return Path(cfg.data.source_dir or cfg.data.root)
+
+
+def _extract_dataset_labels(ds) -> list[int]:
+    """Get integer labels for every sample without running image transforms.
+
+    Fast path uses ``.samples`` (PlantDiseaseDataset and friends), with a
+    Subset-aware unwrap. Falls back to indexing ``ds[i][-1]`` only if no
+    ``.samples`` attribute is reachable, since that path runs the full
+    transform per sample.
+    """
+    if isinstance(ds, Subset):
+        base = ds.dataset
+        if hasattr(base, "samples"):
+            return [int(base.samples[i][1]) for i in ds.indices]
+    if hasattr(ds, "samples"):
+        return [int(s[1]) for s in ds.samples]
+    return [int(ds[i][-1]) for i in range(len(ds))]
 
 
 def build_dataloaders(cfg):
@@ -91,7 +108,7 @@ def build_dataloaders(cfg):
         val_ds = TransformSubset(raw_val_ds, val_tf)
 
     if cfg.data.balanced_sampler:
-        labels = [int(train_ds[i][1]) for i in range(len(train_ds))]
+        labels = _extract_dataset_labels(train_ds)
         counts = torch.bincount(torch.tensor(labels), minlength=num_classes)
         per_class_weight = 1.0 / counts.clamp_min(1).double()
         sample_weights = per_class_weight[torch.tensor(labels)]
