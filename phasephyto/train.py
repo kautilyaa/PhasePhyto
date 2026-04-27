@@ -110,7 +110,8 @@ def build_dataloaders(cfg):
     if cfg.data.balanced_sampler:
         labels = _extract_dataset_labels(train_ds)
         counts = torch.bincount(torch.tensor(labels), minlength=num_classes)
-        per_class_weight = 1.0 / counts.clamp_min(1).double()
+        power = float(cfg.data.balanced_sampler_power)
+        per_class_weight = counts.clamp_min(1).double().pow(-power)
         sample_weights = per_class_weight[torch.tensor(labels)]
         sampler = WeightedRandomSampler(
             weights=sample_weights, num_samples=len(sample_weights), replacement=True
@@ -123,9 +124,13 @@ def build_dataloaders(cfg):
             pin_memory=cfg.data.pin_memory,
             drop_last=True,
         )
+        # Expected sampled fraction per class is proportional to count^(1-power).
+        weighted = counts.double().pow(1.0 - power)
+        expected_share = (weighted / weighted.sum()).tolist()
         print(
-            f"Balanced sampler enabled. Class counts: {counts.tolist()} -> "
-            "uniform expected sampling."
+            f"Balanced sampler enabled (power={power}). "
+            f"Class counts: {counts.tolist()} -> "
+            f"expected sampled share per class: {[round(s, 3) for s in expected_share]}"
         )
     else:
         train_loader = DataLoader(

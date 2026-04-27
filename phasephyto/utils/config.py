@@ -44,6 +44,11 @@ class DataConfig:
     pin_memory: bool = True
     val_split: float = 0.2
     balanced_sampler: bool = False
+    # Power applied to inverse-frequency class weights when balanced_sampler is True.
+    # 1.0 = full inverse-frequency (uniform expected sampling per class).
+    # 0.5 = sqrt-softened ("class-balanced" middle ground).
+    # 0.0 = no rebalancing (equivalent to balanced_sampler=False).
+    balanced_sampler_power: float = 1.0
     # Use-case-specific
     stain: str = "all"        # for histology
     domain: str = "all"       # for wood

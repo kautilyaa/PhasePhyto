@@ -1,0 +1,45 @@
+# Strict apple-overlap benchmark, softer rebalanced variant.
+# Same recipe as apple_overlap_plantdoc_rebalanced.yaml but with
+# balanced_sampler_power=0.5 (sqrt-softened inverse-frequency weighting).
+# Motivation: full balanced_sampler_power=1.0 oversamples the small PV rust
+# class ~3.13x per epoch (rust train share goes 0.106 -> 0.333), which
+# memorized lab-shot rust appearance and hurt rust transfer to PP2021 in
+# the first Fix B run. Sqrt softening lifts rust exposure to ~1.88x
+# instead (rust share -> 0.200), expected to reduce overfitting on the
+# small minority class while keeping scab/healthy gains.
+# Shared label space: Apple___healthy, Apple___Apple_scab, Apple___Cedar_apple_rust
+
+seed: 42
+device: "cuda"
+checkpoint_dir: "checkpoints/apple_overlap_plantdoc_rebalanced_softer"
+project_name: "phasephyto-apple-overlap-plantdoc-rebalanced-softer"
+
+model:
+  backbone_name: "vit_base_patch16_224"
+  fusion_dim: 256
+  pretrained_backbone: true
+  freeze_backbone: false
+
+training:
+  lr: 5.0e-5
+  weight_decay: 1.0e-2
+  epochs: 30
+  warmup_epochs: 3
+  batch_size: 32
+  patience: 8
+  loss: "focal"
+  focal_gamma: 2.0
+
+data:
+  root: "data/overlap/apple_strict"
+  use_case: "plant_disease"
+  image_size: 224
+  val_split: 0.2
+  balanced_sampler: true
+  balanced_sampler_power: 0.5
+  source_dir: "data/overlap/apple_strict/plantvillage"
+  target_dir: "data/overlap/apple_strict/plantdoc"
+  train_dir: ""
+  val_dir: ""
+  eval_source_dir: "data/overlap/apple_strict/plantvillage"
+  eval_target_dir: "data/overlap/apple_strict/plantdoc"
