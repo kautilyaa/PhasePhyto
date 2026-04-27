@@ -46,6 +46,26 @@ are in `Project_Summary.md`. Treat the PlantDoc-target n=29 number as a
 sanity check only (95% CI ≈ ±13 pp); PP2021 is the statistically
 meaningful target.
 
+### Follow-up fixes notebook
+
+`PhasePhyto_Apple_Overlap_Fixes_Colab.ipynb` applies two interventions on
+top of the baseline checkpoint produced above:
+
+- **Fix A**: post-hoc logit adjustment (no retrain, ~5 min on T4) using
+  the PV class prior. With `use_oracle_target_prior=False` (default)
+  assumes a uniform target prior — this turned out **net-negative** on
+  PP2021 because PP2021 isn't actually uniform.
+- **Fix B**: rebalanced retrain via `configs/apple_overlap_plantdoc_rebalanced.yaml`
+  (`data.balanced_sampler: true`, ~30–45 min on T4). **Net-positive in
+  aggregate**: PP2021 0.7136 → 0.7416 acc, 0.6813 → 0.6969 F1; PlantDoc
+  0.8621 → 0.8966 acc, 0.8632 → 0.8965 F1. Trade-off: lifts scab and
+  healthy, slightly hurts rust (small PV rust corpus + heavy oversampling).
+
+Comparison artifacts (`pp2021_macro_comparison.csv`,
+`pp2021_per_class_comparison.csv`) are written to
+`MyDrive/PhasePhyto/checkpoints/apple_overlap_fixes_comparison/`. Full
+synthesis in `RESULTS.md`; chronological evidence JSONs under `Results/`.
+
 ---
 
 ## Step 0: Colab runtime setup

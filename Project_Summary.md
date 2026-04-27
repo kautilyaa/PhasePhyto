@@ -142,6 +142,67 @@ Two distinct failure modes are visible in the confusion matrix:
   accuracy. They are reported for completeness but should not be cited as
   evidence on their own.
 
+### Follow-up interventions on PP2021 (2026-04-26): Fix A vs Fix B
+
+Two follow-up attempts were run against the same PV-trained apple-overlap
+baseline on PP2021:
+
+- **Fix A (logit adjustment with uniform target prior):** net-negative.
+- **Fix B (class-rebalanced retrain):** net-positive overall, but error
+  redistribution across classes.
+
+| Variant | Acc | F1 macro | Acc delta vs baseline | F1 delta vs baseline |
+|---|---:|---:|---:|---:|
+| Baseline (PV-trained) | 0.7136 | 0.6813 | -- | -- |
+| Fix A (logit adjust, uniform prior) | 0.6789 | 0.6619 | -3.5 pp | -1.9 pp |
+| Fix B (rebalanced retrain) | 0.7416 | 0.6969 | +2.8 pp | +1.6 pp |
+
+Per-class F1 shows why aggregate metrics hide the mechanism:
+
+| Class | Baseline | Fix A | Fix B | Best |
+|---|---:|---:|---:|---|
+| `Apple___Apple_scab` | 0.65 | 0.64 | 0.71 | Fix B (+5.8 pp) |
+| `Apple___Cedar_apple_rust` | 0.60 | 0.58 | 0.56 | Baseline |
+| `Apple___healthy` | 0.80 | 0.77 | 0.83 | Fix B (+3.2 pp) |
+
+Interpretation:
+
+1. **Fix A failed because the prior assumption was wrong.** The adjustment
+   used `log(uniform) - log(PV_prior)`, but PP2021 is not uniform (~43% scab /
+   16% rust / 41% healthy). This over-corrected rust and under-corrected scab,
+   raising rust recall but collapsing rust precision and reducing healthy
+   recall, with net macro-F1 decline.
+2. **Fix B improved overall but hurt rust.** Weighted balancing with only 217 PV
+   rust images oversampled rust too aggressively (roughly 6x exposure per
+   epoch), likely memorizing PV rust appearance and reducing transfer to PP2021
+   rust; scab and healthy improved while rust dropped.
+3. **Neither intervention closes the domain gap.** Best target accuracy remains
+   0.7416 versus ~1.00 on source, leaving a ~26 pp gap consistent with
+   persistent feature shift.
+
+**Fix B incidentally lifts PlantDoc too (n=29).**
+
+| Variant on PlantDoc | Acc | F1 macro |
+|---|---:|---:|
+| Baseline (PV-trained) | 0.8621 | 0.8632 |
+| Fix B (rebalanced retrain) | 0.8966 | 0.8965 |
+
+Same caveat as the baseline PD result: n=29 carries a 95% CI of roughly
++/-13 pp, so this is directionally consistent with the PP2021 improvement
+but should not be cited as standalone evidence.
+
+This strengthens the thesis negative-result narrative: common calibration and
+rebalancing fixes can move macro metrics while exposing non-trivial per-class
+tradeoffs that matter more than aggregate gains.
+
+Recommended low-cost follow-ups:
+
+1. Re-run Fix A with `use_oracle_target_prior=True` (actual PP2021 prior) as an
+   upper bound on prior-correction benefit.
+2. Re-run Fix B with softer balancing weights (for example,
+   `weight ∝ 1/sqrt(count)` via a `balanced_sampler_power` knob) to reduce
+   overfitting pressure on the smallest class.
+
 ### Suggested next runs (lowest-cost first)
 
 1. **Per-class threshold calibration on a held-out PP2021 slice** (no
@@ -164,6 +225,10 @@ MyDrive/PhasePhyto/checkpoints/apple_overlap_plantdoc/
   eval_pp2021.json
   apple_overlap_eval_summary.{json,csv,md,png}
 ```
+
+The chronological evidence log (per-run target classification reports,
+domain-shift JSONs for `full` / `backbone_only` / `no_fusion`, apple-overlap
+fix comparisons) is committed under `Results/` and synthesized in `RESULTS.md`.
 
 ---
 
@@ -188,11 +253,17 @@ MyDrive/PhasePhyto/checkpoints/apple_overlap_plantdoc/
 - 2026-04-26: strict 3-class apple-overlap baseline added as independent
   corroboration of the PV-overstates-generalization headline (PV->PP2021
   drop of -29 pp accuracy, -32 pp F1 on n=11,310; see section above).
+- 2026-04-27: Fix A (logit adjustment) + Fix B (rebalanced retrain)
+  evaluated on PP2021. Fix A net-negative (uniform-prior assumption wrong);
+  Fix B net-positive (acc +2.8 pp, F1 +1.6 pp on PP2021; acc +3.4 pp on
+  PlantDoc) but redistributes errors across classes. Full evidence under
+  `Results/` and `RESULTS.md`.
 - Remaining optional/last-mile items:
   - pseudo-label rerun with calibrated threshold (25-class)
   - optional DANN trial if needed (25-class)
-  - apple-overlap multi-seed + per-class threshold calibration (cheap, would
-    tighten the new evidence section before write-up)
+  - apple-overlap multi-seed + Fix A oracle-prior re-run + softer Fix B
+    sampler weighting (`balanced_sampler_power`) to tighten the per-class
+    story before publication
   - final write-up polish
 
 ---

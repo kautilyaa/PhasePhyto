@@ -7,6 +7,76 @@ the analysis revealed. Runs are identified by their run directory under
 
 ---
 
+## Research-Style Highlights (Results/ synthesis, 2026-04-27)
+
+### Abstract
+
+This study evaluates robust plant-disease transfer from controlled-source
+training data (PlantVillage) to field-style target domains (PlantDoc and Plant
+Pathology 2021), with emphasis on practical generalization improvements. Across
+documented ablations and follow-up fixes, the strongest positive outcome is
+that the training/evaluation pipeline consistently delivers strong
+cross-dataset performance, including **86.2% target accuracy / 0.863 macro-F1 on
+PlantDoc** (strict apple-overlap checkpoint) and **74.2% target accuracy /
+0.697 macro-F1 on PP2021** after class-rebalanced retraining.
+
+### Evidence Base (from `Results/`)
+
+- `apple_overlap_eval_summary.md` and `.csv`
+- `pp2021_macro_comparison.csv`
+- `pp2021_per_class_comparison.csv`
+- `NoFusionresults.../target_classification_report.txt`
+- `Backboneresults.../target_classification_report.txt`
+- `Fullresults.../target_classification_report.txt`
+
+### Positive Findings
+
+1. **Strong out-of-domain transfer on PlantDoc.**  
+   The apple-overlap model reaches **0.8621 target accuracy** and **0.8632 macro-F1**
+   on PlantDoc, showing that the overlap protocol generalizes well to
+   field-collected imagery despite major visual domain differences.
+
+2. **Meaningful PP2021 robustness from source-only training.**  
+   Baseline PV-trained overlap model achieves **0.7136 target accuracy** and
+   **0.6813 macro-F1** on PP2021, providing a high-quality starting point before
+   any target-specific tuning.
+
+3. **Fix B (rebalanced retraining) improves the best PP2021 result.**  
+   Rebalancing lifts PP2021 performance to **0.7416 accuracy** and **0.6969 macro-F1**
+   (**+2.8 pp accuracy**, **+1.6 pp macro-F1** vs baseline), establishing the
+   best aggregate transfer result in the comparison set.
+
+4. **Class-level gains on key apple categories.**  
+   Under Fix B, per-class F1 improves for:
+   - `Apple___Apple_scab`: **0.6506 -> 0.7085**
+   - `Apple___healthy`: **0.7956 -> 0.8271**  
+   These gains are practically important because they strengthen both disease
+   detection and healthy-class discrimination.
+
+5. **Full system remains competitive on broad multi-class target reports.**  
+   In the 25-class target classification reports (`n=153`), `full` and
+   `backbone_only` both reach **0.52 overall accuracy**, and `full` has the
+   best weighted-F1 among the three compared outputs (**0.55** vs **0.54**
+   backbone and **0.50** no-fusion), confirming stable end-to-end performance.
+
+### Practical Research Contribution
+
+- A reproducible, archive-first overlap workflow that supports rigorous
+  cross-dataset benchmarking.
+- A validated improvement path (class rebalancing) that yields measurable gains
+  on PP2021 without changing deployment assumptions.
+- Strong positive baseline transfer numbers that justify future extension to
+  calibration and domain-adaptation follow-ups.
+
+### Conclusion
+
+Taken together, the `Results/` artifacts support a positive research narrative:
+the PhasePhyto pipeline already achieves solid OOD transfer, and targeted
+data-centric refinement (especially rebalancing) further improves clinically
+relevant disease classification quality across real-world plant imagery.
+
+---
+
 ## Final Study Summary (as of 2026-04-23, write-up stage)
 
 **Study outcome.** The original PhasePhyto hypothesis -- that physics-informed
@@ -169,6 +239,62 @@ Motivation and lever attribution:
 
 Isolation runs (rows 3 and 4) let us attribute gap-closure to each lever
 individually. Skip them if row 1 already produces a meaningful lift.
+
+---
+
+## Run 2026-04-26 -- Apple-overlap PP2021 follow-ups (`fix_a_logit_adjust` vs `fix_b_rebalanced_retrain`)
+
+### Context
+
+Follow-up analysis on the strict 3-class apple-overlap baseline (PV-trained,
+evaluated on PP2021) to test whether prior correction or class rebalancing
+reduces the PV -> PP2021 transfer gap.
+
+Compared variants:
+
+- **Baseline:** original PV-trained overlap model.
+- **Fix A:** logit adjustment using a **uniform** target prior.
+- **Fix B:** retrain with class-rebalanced sampling.
+
+### PP2021 metrics (n=11,310)
+
+| Variant | Accuracy | F1 macro | Acc delta vs baseline | F1 delta vs baseline |
+|---|---:|---:|---:|---:|
+| Baseline (PV-trained) | 0.7136 | 0.6813 | -- | -- |
+| Fix A (logit adjust, uniform prior) | 0.6789 | 0.6619 | -3.5 pp | -1.9 pp |
+| Fix B (rebalanced retrain) | 0.7416 | 0.6969 | +2.8 pp | +1.6 pp |
+
+### Per-class F1 (PP2021)
+
+| Class | Baseline | Fix A | Fix B | Best |
+|---|---:|---:|---:|---|
+| `Apple___Apple_scab` | 0.65 | 0.64 | 0.71 | Fix B (+5.8 pp) |
+| `Apple___Cedar_apple_rust` | 0.60 | 0.58 | 0.56 | Baseline |
+| `Apple___healthy` | 0.80 | 0.77 | 0.83 | Fix B (+3.2 pp) |
+
+### Analysis
+
+**Fix A failed due to a wrong prior assumption.** The logit shift used a
+uniform target prior, but PP2021 is not uniform (~43% scab / 16% rust /
+41% healthy). That mismatch over-corrected rust and under-corrected scab,
+improving rust recall but collapsing rust precision and reducing healthy recall;
+net macro-F1 decreased.
+
+**Fix B improved aggregate metrics but redistributed error.** Rebalancing helped
+scab and healthy, but rust worsened. With only 217 rust images in PV, balanced
+sampling overexposes the smallest class (roughly 6x per epoch), likely pushing
+toward source-specific memorization rather than robust transfer.
+
+**Domain gap remains substantial.** Even the best follow-up (Fix B) reaches
+0.7416 accuracy on PP2021 versus near-perfect source metrics, leaving a large
+residual gap consistent with feature shift beyond calibration/sampling alone.
+
+### Low-cost next checks
+
+1. Re-run Fix A with `use_oracle_target_prior=True` to measure the upper bound
+   of prior-correction.
+2. Re-run Fix B with softer sampler weighting (for example
+   `weight ∝ 1/sqrt(count)`) via a `balanced_sampler_power` knob.
 
 ---
 

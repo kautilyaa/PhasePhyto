@@ -43,7 +43,7 @@ for `full`, inside run-to-run noise. The PC stream + cross-attention does
 not beat plain label-smoothed ViT under this OOD recipe. The reusable
 contribution is the training recipe, not the physics-informed fusion.
 
-### Strict 3-class apple-overlap (PV -> PD / PP2021), 2026-04-26
+### Strict 3-class apple-overlap (PV -> PD / PP2021), 2026-04-26 -- 2026-04-27
 
 A second benchmark on the **shared apple labels** (`Apple___healthy`,
 `Apple___Apple_scab`, `Apple___Cedar_apple_rust`) across PV, PlantDoc, and
@@ -63,10 +63,26 @@ rust). The first is a calibration problem; the second is a feature-shift
 problem. See `Project_Summary.md` for the full per-class breakdown,
 caveats, and suggested follow-ups.
 
+**Follow-up fixes (2026-04-27).** Two interventions on top of the apple
+baseline. Fix A (logit adjustment with uniform target prior, no retrain)
+turned out **net-negative** because PP2021 is not uniform; Fix B
+(`data.balanced_sampler: true` retrain via `configs/apple_overlap_plantdoc_rebalanced.yaml`)
+is **net-positive in aggregate** but redistributes errors -- helps scab
+and healthy, hurts rust:
+
+| Variant | PP2021 Acc | PP2021 F1 | PlantDoc Acc | PlantDoc F1 |
+|---|---:|---:|---:|---:|
+| Baseline | 0.7136 | 0.6813 | 0.8621 | 0.8632 |
+| Fix A (logit adjust) | 0.6789 | 0.6619 | n/a | n/a |
+| Fix B (rebalanced retrain) | **0.7416** | **0.6969** | **0.8966** | **0.8965** |
+
+Full per-class breakdown, evidence JSONs, and the combined comparison are
+in `RESULTS.md` and `Results/`. Caveat: single seed throughout;
+PlantDoc-target n=29 is statistically anecdotal.
+
 This corroborates the negative-results headline at a tighter,
 fully-overlapping label space (no label-mapping ambiguity), with a
-real-world n=11,310 target. Caveat: single seed; PlantDoc-target n=29 is
-statistically anecdotal.
+real-world n=11,310 target.
 
 ## What this project does and does NOT claim
 
@@ -374,8 +390,15 @@ trains/evaluates, use:
 
 Sample baseline numbers from this benchmark (single seed, PV-trained ViT-B/16,
 2026-04-26): -13.8 pp accuracy on PlantDoc test (n=29), **-28.6 pp accuracy
-and -31.8 pp F1 on Plant Pathology 2021 (n=11,310)**. Per-class breakdown
-and failure-mode analysis are in `Project_Summary.md`.
+and -31.8 pp F1 on Plant Pathology 2021 (n=11,310)**. After the rebalanced
+follow-up retrain (Fix B, 2026-04-27): PP2021 lifts to 0.7416 acc / 0.6969
+F1 (+2.8 / +1.6 pp), PlantDoc to 0.8966 acc / 0.8965 F1. Per-class
+breakdown, failure-mode analysis, and the Fix-A-vs-Fix-B comparison are in
+`Project_Summary.md` and `RESULTS.md`. Raw evidence under `Results/`.
+
+A companion notebook applies these two fixes on top of the baseline:
+
+- `notebooks/PhasePhyto_Apple_Overlap_Fixes_Colab.ipynb`
 
 ### Makefile Targets
 
