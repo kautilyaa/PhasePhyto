@@ -23,29 +23,32 @@ outcome is that the residual PV -> PP2021 gap is **feature-shift, not
 prior**: even an oracle-prior post-hoc logit adjustment (Fix A v2)
 underperforms the baseline by -0.3 pp macro-F1.
 
-### Evidence Base (from `Results/`)
+### Evidence Base (from checked-in `Results/`)
 
-- `apple_overlap_plantdoc-.../apple_overlap_eval_summary.{md,csv,json,png}`
-- `apple_overlap_plantdoc-.../eval_plantdoc.json`,
-  `eval_pp2021.json`, `eval_pp2021_calibrated.json`
-- `apple_overlap_plantdoc_rebalanced-.../eval_{plantdoc,pp2021}.json`
-  (Fix B v1, `balanced_sampler_power=1.0`)
-- `apple_overlap_plantdoc_rebalanced_softer-.../eval_{plantdoc,pp2021}.json`
-  (Fix B v2, `balanced_sampler_power=0.5`)
-- `apple_overlap_fixes_comparison-.../comparison_summary.json`,
-  `pp2021_macro_comparison.csv`, `pp2021_per_class_comparison.csv` (v1, 3-way)
-- `apple_overlap_fixes_v2_comparison-.../comparison_summary_v2.json`,
-  `pp2021_macro_comparison_v2.csv`, `plantdoc_macro_comparison_v2.csv`,
-  `pp2021_per_class_comparison_v2.csv` (v2, 5-way)
-- 25-class ablation evidence:
-  `Fullresults-.../{phasephyto_results.json,phasephyto_domain_shift.json,target_classification_report.txt,history.json}`,
-  `Backboneresults-.../{phasephyto_domain_shift.json,target_classification_report.txt,history.json}`,
-  `NoFusionresults-.../{phasephyto_domain_shift.json,target_classification_report.txt,history.json}`
-- Plot evidence: `BackBoneplots-.../training_curves.png`,
-  `Fullplots-.../{training_curves,confusion_matrices,illumination_invariance,leaf_mask_sanity,analysis_sample_*}.png`,
-  `NoFusionplots-.../training_curves.png`
-- Run manifest: `FULL_run_manifest.json` (full-stack run
-  `20260421-202641_full`)
+- Apple-overlap summary artifacts:
+  `apple_overlap_plantdoc-20260427T160742Z-3-001/apple_overlap_plantdoc/apple_overlap_eval_summary.md`,
+  `apple_overlap_plantdoc-20260427T160742Z-3-001/apple_overlap_plantdoc/apple_overlap_eval_summary.csv`,
+  `apple_overlap_plantdoc-20260427T160742Z-3-001/apple_overlap_plantdoc/apple_overlap_eval_summary.png`
+- Comparison tables:
+  `apple_overlap_fixes_comparison-20260427T160744Z-3-001/apple_overlap_fixes_comparison/pp2021_macro_comparison.csv`,
+  `apple_overlap_fixes_comparison-20260427T160744Z-3-001/apple_overlap_fixes_comparison/pp2021_per_class_comparison.csv`,
+  `apple_overlap_fixes_v2_comparison-20260427T181006Z-3-001/apple_overlap_fixes_v2_comparison/pp2021_macro_comparison_v2.csv`,
+  `apple_overlap_fixes_v2_comparison-20260427T181006Z-3-001/apple_overlap_fixes_v2_comparison/plantdoc_macro_comparison_v2.csv`,
+  `apple_overlap_fixes_v2_comparison-20260427T181006Z-3-001/apple_overlap_fixes_v2_comparison/pp2021_per_class_comparison_v2.csv`
+- 25-class ablation reports:
+  `Fullresults-20260427T160555Z-3-001/results/target_classification_report.txt`,
+  `Backboneresults-20260427T160446Z-3-001/results/target_classification_report.txt`,
+  `NoFusionresults-20260427T160328Z-3-001/results/target_classification_report.txt`
+- Plot evidence:
+  `BackBoneplots-20260427T160505Z-3-001/plots/training_curves.png`,
+  `NoFusionplots-20260427T160406Z-3-001/plots/training_curves.png`,
+  `Fullplots-20260427T160557Z-3-001/plots/training_curves.png`,
+  `Fullplots-20260427T160557Z-3-001/plots/confusion_matrices.png`,
+  `Fullplots-20260427T160557Z-3-001/plots/illumination_invariance.png`,
+  `Fullplots-20260427T160557Z-3-001/plots/leaf_mask_sanity.png`,
+  `Fullplots-20260427T160557Z-3-001/plots/analysis_sample_0.png`,
+  `Fullplots-20260427T160557Z-3-001/plots/analysis_sample_1.png`,
+  `Fullplots-20260427T160557Z-3-001/plots/analysis_sample_2.png`
 
 ### Positive Findings
 
@@ -380,7 +383,7 @@ Both predictions are confirmed in the data.
 
 ### PP2021 macro metrics (n=11,310), 5-way comparison
 
-From `apple_overlap_fixes_v2_comparison-.../pp2021_macro_comparison_v2.csv`:
+From `Results/apple_overlap_fixes_v2_comparison-20260427T181006Z-3-001/apple_overlap_fixes_v2_comparison/pp2021_macro_comparison_v2.csv`:
 
 | Variant | Acc | F1 macro | Precision macro | Recall macro |
 |---|---:|---:|---:|---:|
@@ -397,7 +400,7 @@ because accuracy can be inflated by class collapse.
 
 ### PlantDoc macro metrics (n=29), 3-way comparison
 
-From `apple_overlap_fixes_v2_comparison-.../plantdoc_macro_comparison_v2.csv`:
+From `Results/apple_overlap_fixes_v2_comparison-20260427T181006Z-3-001/apple_overlap_fixes_v2_comparison/plantdoc_macro_comparison_v2.csv`:
 
 | Variant | Acc | F1 macro |
 |---|---:|---:|
@@ -413,7 +416,7 @@ at this granularity.
 
 ### PP2021 per-class F1, full 5-way comparison
 
-From `apple_overlap_fixes_v2_comparison-.../pp2021_per_class_comparison_v2.csv`:
+From `Results/apple_overlap_fixes_v2_comparison-20260427T181006Z-3-001/apple_overlap_fixes_v2_comparison/pp2021_per_class_comparison_v2.csv`:
 
 | Class | Baseline | Fix A v1 | Fix A v2 (oracle) | Fix B v1 (full) | Fix B v2 (softer) |
 |---|---:|---:|---:|---:|---:|
@@ -477,11 +480,12 @@ The v1 + v2 sweep produces a clean four-row narrative:
 
 Persisted under `Results/`:
 
-- `apple_overlap_plantdoc_rebalanced_softer-20260427T181010Z-3-001/`
-  -- Fix B v2 evaluation JSONs (`eval_plantdoc.json`, `eval_pp2021.json`).
-- `apple_overlap_fixes_v2_comparison-20260427T181006Z-3-001/`
-  -- 5-way macro and per-class comparison CSVs and
-  `comparison_summary_v2.json`.
+- `apple_overlap_fixes_v2_comparison-20260427T181006Z-3-001/apple_overlap_fixes_v2_comparison/`
+  -- 5-way macro and per-class comparison CSVs.
+- `apple_overlap_plantdoc-20260427T160742Z-3-001/apple_overlap_plantdoc/`
+  -- baseline/follow-up summary files:
+  `apple_overlap_eval_summary.md`, `apple_overlap_eval_summary.csv`,
+  `apple_overlap_eval_summary.png`.
 
 Source notebook: `notebooks/PhasePhyto_Apple_Overlap_Fixes_v2_Colab.ipynb`.
 

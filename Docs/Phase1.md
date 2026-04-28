@@ -62,8 +62,10 @@ We kept the ViT-based backbone and evaluated intervention strategies rather than
 | Variant | PP2021 Accuracy | PP2021 Macro-F1 | PlantDoc Accuracy | PlantDoc Macro-F1 |
 |---|---:|---:|---:|---:|
 | Baseline overlap | 0.7136 | 0.6813 | 0.8621 | 0.8632 |
-| Fix B v1 (rebalance=1.0) | 0.7416 | 0.6969 | 0.8966 | 0.8965 |
-| **Fix B v2 (rebalance=0.5)** | **0.7393** | **0.7015** | **0.8966** | **0.8965** |
+| Fix A v1 (logit adjust, uniform prior) | 0.6789 | 0.6619 | n/a | n/a |
+| Fix A v2 (logit adjust, oracle prior) | 0.7049 | 0.6779 | n/a | n/a |
+| Fix B v1 (rebalance, power=1.0) | 0.7416 | 0.6969 | 0.8966 | 0.8965 |
+| **Fix B v2 (rebalance, power=0.5)** | **0.7393** | **0.7015** | **0.8966** | **0.8965** |
 
 ### Recommended Graphs to include in PDF
 1. Bar chart: PP2021 Macro-F1 for Baseline vs Fix A vs Fix B variants  
