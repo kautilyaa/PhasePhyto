@@ -52,7 +52,6 @@ class PhasePhyto(nn.Module):
         super().__init__()
         self.image_size = image_size
 
-        # --- Stream 1: Phase Congruency ---
         self.filter_bank = LogGaborFilterBank(
             image_size=image_size,
             num_scales=pc_scales,
@@ -67,7 +66,6 @@ class PhasePhyto(nn.Module):
             fusion_dim=fusion_dim,
         )
 
-        # --- Stream 2: Semantic Backbone (ViT) ---
         self.backbone = SemanticBackbone(
             backbone_name=backbone_name,
             fusion_dim=fusion_dim,
@@ -75,20 +73,16 @@ class PhasePhyto(nn.Module):
             freeze_backbone=freeze_backbone,
         )
 
-        # --- Stream 3: Illumination Normalization ---
         self.illum_stream = IlluminationNormStream(
             out_dim=fusion_dim,
         )
 
-        # --- Cross-Attention Fusion ---
         self.fusion = StructuralSemanticFusion(
             fusion_dim=fusion_dim,
             num_heads=num_heads,
             dropout=dropout,
         )
 
-        # --- Classification Head ---
-        # Input: fused (fusion_dim) + illumination auxiliary (fusion_dim)
         self.classifier = nn.Sequential(
             nn.Linear(fusion_dim * 2, fusion_dim),
             nn.GELU(),
@@ -105,7 +99,6 @@ class PhasePhyto(nn.Module):
         Returns:
             (B, 1, H, W) grayscale tensor.
         """
-        # ITU-R BT.601 luminance
         weights = torch.tensor(
             [0.2989, 0.5870, 0.1140], device=x.device, dtype=x.dtype
         ).view(1, 3, 1, 1)
@@ -134,30 +127,24 @@ class PhasePhyto(nn.Module):
         if x_clahe is None:
             x_clahe = x_rgb
 
-        # --- Stream 1: Phase Congruency ---
         gray = self._rgb_to_gray(x_rgb)  # (B, 1, H, W)
         even, odd = self.filter_bank(gray)  # each (B, 24, H, W)
         pc_maps = self.pc_extractor(even, odd)  # dict of (B, 1, H, W) maps
 
-        # Concatenate 3 PC maps -> (B, 3, H, W)
         pc_input = torch.cat(
             [pc_maps["pc_magnitude"], pc_maps["phase_symmetry"], pc_maps["oriented_energy"]],
             dim=1,
         )
         structural_tokens = self.pc_encoder(pc_input)  # (B, 49, fusion_dim)
 
-        # --- Stream 2: Semantic Backbone ---
         semantic_tokens = self.backbone(x_rgb)  # (B, 196, fusion_dim) for ViT-B/16
 
-        # --- Stream 3: Illumination Normalization ---
         illum_features = self.illum_stream(x_clahe)  # (B, fusion_dim)
 
-        # --- Fusion ---
         fused, attn_weights = self.fusion(
             structural_tokens, semantic_tokens, return_attention=return_attention
         )  # fused: (B, fusion_dim)
 
-        # --- Classification ---
         combined = torch.cat([fused, illum_features], dim=1)  # (B, fusion_dim * 2)
         logits = self.classifier(combined)  # (B, num_classes)
 

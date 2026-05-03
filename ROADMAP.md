@@ -629,17 +629,17 @@ for future sessions.
 ## Dependency Graph (Critical Path)
 
 ```
-Phase 0 (Scaffolding)         ✅ COMPLETE
-  └─> Phase 1 (PC Module)     ✅ COMPLETE
-        ├─> Phase 2 (Streams)  ✅ COMPLETE
-        │     └─> Phase 3 (Fusion) ✅ COMPLETE
-        │           └─> Phase 5 (Training) ✅ COMPLETE
-        │                 ├─> Phase 6 (Baselines)  ⚠️ PARTIAL (CLI + Colab ready)
-        │                 └─> Phase 7 (Training)   ⏳ PENDING (needs real data)
-        │                       └─> Phase 8 (XAI)  ⚠️ PARTIAL
-        │                             └─> Phase 10 (Paper) ⚠️ PARTIAL
-        └─> Phase 4 (Data)    ✅ COMPLETE
-                                    Phase 9 (Edge)  ⏳ PENDING
+Phase 0 (Scaffolding)         COMPLETE
+  └─> Phase 1 (PC Module)     COMPLETE
+        ├─> Phase 2 (Streams)  COMPLETE
+        │     └─> Phase 3 (Fusion) COMPLETE
+        │           └─> Phase 5 (Training) COMPLETE
+        │                 ├─> Phase 6 (Baselines)  PARTIAL (CLI + Colab ready)
+        │                 └─> Phase 7 (Training)   PENDING (needs real data)
+        │                       └─> Phase 8 (XAI)  PARTIAL
+        │                             └─> Phase 10 (Paper) PARTIAL
+        └─> Phase 4 (Data)    COMPLETE
+                                    Phase 9 (Edge)  PENDING
 ```
 
 ## Risk Register

@@ -75,21 +75,17 @@ class DualTransform:
         self.to_tensor = transforms.ToTensor()
 
     def __call__(self, image: Any) -> tuple[torch.Tensor, torch.Tensor]:
-        # Apply spatial augmentations (returns PIL)
         augmented = self.base(image)
 
-        # Convert to numpy for CLAHE
         aug_np = np.array(augmented)
         clahe_np = self.clahe_fn(aug_np)
 
-        # To tensor + normalize
         rgb_tensor = self.normalize(self.to_tensor(aug_np))
         clahe_tensor = self.normalize(self.to_tensor(clahe_np))
 
         return rgb_tensor, clahe_tensor
 
 
-# ImageNet normalisation constants
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
 

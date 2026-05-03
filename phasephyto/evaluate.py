@@ -164,7 +164,6 @@ def main():
         f"{results['delta']['f1_drop']:<+15.4f}"
     )
 
-    # Save results
     results["use_case"] = cfg.data.use_case
     with open(args.output, "w") as f:
         json.dump(results, f, indent=2, default=str)

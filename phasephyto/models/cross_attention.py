@@ -47,7 +47,6 @@ class StructuralSemanticFusion(nn.Module):
         self.use_residual = use_residual
         hidden_dim = ffn_hidden_dim or max(fusion_dim // 2, num_heads)
 
-        # Multi-head cross-attention
         self.cross_attn = nn.MultiheadAttention(
             embed_dim=fusion_dim,
             num_heads=num_heads,
@@ -55,12 +54,10 @@ class StructuralSemanticFusion(nn.Module):
             batch_first=True,
         )
 
-        # Layer norm before and after attention
         self.norm_q = nn.LayerNorm(fusion_dim)
         self.norm_kv = nn.LayerNorm(fusion_dim)
         self.norm_out = nn.LayerNorm(fusion_dim)
 
-        # Feed-forward after attention
         self.ffn = nn.Sequential(
             nn.Linear(fusion_dim, hidden_dim),
             nn.GELU(),
@@ -87,11 +84,9 @@ class StructuralSemanticFusion(nn.Module):
             fused: (B, D) global feature vector (mean-pooled).
             attn_weights: (B, Nq, Nkv) or None.
         """
-        # Pre-norm
         q = self.norm_q(structural_tokens)  # (B, Nq, D)
         kv = self.norm_kv(semantic_tokens)  # (B, Nkv, D)
 
-        # Cross-attention: Q attends to K,V
         attn_out, attn_weights = self.cross_attn(
             query=q, key=kv, value=kv,
             need_weights=return_attention,
@@ -101,16 +96,13 @@ class StructuralSemanticFusion(nn.Module):
                 dim=-1, keepdim=True
             ).clamp_min(torch.finfo(attn_weights.dtype).tiny)
 
-        # Residual connection
         if self.use_residual:
             attn_out = attn_out + structural_tokens
         attn_out = self.norm_out(attn_out)
 
-        # Feed-forward with residual
         ffn_out = self.ffn(attn_out)
         fused_tokens = self.norm_ffn(ffn_out + attn_out)  # (B, Nq, D)
 
-        # Global average pool over token sequence -> (B, D)
         fused = fused_tokens.mean(dim=1)
 
         return fused, attn_weights

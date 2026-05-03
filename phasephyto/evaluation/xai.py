@@ -26,7 +26,6 @@ class GradCAMPhasePhyto:
         self.gradients: torch.Tensor | None = None
         self.activations: torch.Tensor | None = None
 
-        # Register hooks
         self.target_layer.register_forward_hook(self._save_activation)  # type: ignore[arg-type]
         self.target_layer.register_full_backward_hook(self._save_gradient)  # type: ignore[arg-type]
 
@@ -68,22 +67,18 @@ class GradCAMPhasePhyto:
         if self.gradients is None or self.activations is None:
             raise RuntimeError("Grad-CAM hooks did not capture gradients/activations")
 
-        # Weight activations by gradients
         weights = self.gradients.mean(dim=1, keepdim=True)  # (1, 1, D)
         cam = (weights * self.activations).sum(dim=-1)  # (1, Nq)
         cam = torch.relu(cam)
 
-        # Reshape to spatial grid (7x7 for 49 tokens)
         side = int(cam.shape[1] ** 0.5)
         cam = cam.view(1, 1, side, side)
 
-        # Upsample to image resolution
         cam = torch.nn.functional.interpolate(
             cam, size=x_rgb.shape[2:], mode="bilinear", align_corners=False
         )
         cam_np = cam.squeeze().cpu().numpy()
 
-        # Normalise
         cam_np = (cam_np - cam_np.min()) / (cam_np.max() - cam_np.min() + 1e-8)
         return cast(np.ndarray, cam_np)
 

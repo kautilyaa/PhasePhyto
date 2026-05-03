@@ -57,7 +57,6 @@ def evaluate_domain_shift(
 
         results[split_name] = compute_metrics(all_labels, all_preds, class_names)
 
-    # Compute accuracy delta
     target_accuracy = float(results["target"]["accuracy"])
     source_accuracy = float(results["source"]["accuracy"])
     target_f1 = float(results["target"]["f1_macro"])

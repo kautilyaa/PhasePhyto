@@ -1,0 +1,131 @@
+\documentclass[conference]{IEEEtran}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{hidelinks}
+
+\title{PhasePhyto: A Rigorous OOD Study of Physics-Informed Fusion for Botanical Image Classification}
+
+\author{%
+\IEEEauthorblockN{Matheshwara Annamalai Senthilkumar, Arunbh Yashaswi}
+\IEEEauthorblockA{Group 25\\
+University of Maryland, Baltimore County\\
+UID: 121281500, 121304537}
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This project studies out-of-distribution (OOD) plant disease classification using PlantVillage as the source domain and PlantDoc as the target domain~\cite{Hughes2015,Singh2020}. We developed \textit{PhasePhyto}, a three-stream architecture that combines phase congruency features, a ViT-B/16 semantic backbone, and a CLAHE-based illumination stream through cross-attention. The original hypothesis was that phase congruency's formal amplitude invariance would improve transfer from clean laboratory imagery to cluttered field imagery. Our controlled ablation study shows that this hypothesis is not supported: the full model and a backbone-only variant achieve identical target accuracy (0.5229), and the phase-congruency-only variant collapses to near-random target performance (macro-F1 0.0791). However, the broader OOD training recipe---label smoothing, differential learning rates, EMA, SAM, strong augmentation, HSV foreground gating, horizontal-flip TTA, and TENT---improves the target accuracy of the system from 47.71\% to 52.29\%. A strict apple-overlap follow-up benchmark on PlantVillage, PlantDoc, and Plant Pathology 2021 further shows that softened class rebalancing is more effective than post-hoc calibration. The final outcome is both a negative result on the architectural claim and a practical recipe for more robust botanical transfer.
+\end{abstract}
+
+\section{Introduction}
+Plant disease classifiers often perform extremely well on curated datasets but fail when deployed in real field conditions. This project focuses on the PlantVillage $\rightarrow$ PlantDoc setting~\cite{Hughes2015,Singh2020}, where the source domain contains isolated leaves with clean backgrounds and stable lighting, while the target domain contains cluttered scenes, nonuniform illumination, occlusion, and sensor variation. The gap between near-perfect source accuracy and much lower target accuracy makes this benchmark a useful test bed for OOD robustness.
+
+Our project explored whether a physics-inspired feature operator could help bridge this gap. Specifically, we used image phase congruency (PC), which responds to structural boundaries and is mathematically invariant to monotonic amplitude rescaling~\cite{Kovesi1999}. We hypothesized that if PC captured leaf structure in a way that was insensitive to lighting and intensity variation, then a network that fused PC features with ViT features might transfer better than a semantic-only baseline.
+
+The final study answers two questions: (1) does phase-congruency fusion help OOD transfer on botanical images, and (2) which practical training interventions improve transfer most? The answer to the first is negative under our benchmark; the answer to the second is positive and leads to a reusable training recipe.
+
+\section{Methodology}
+\subsection{Architecture}
+PhasePhyto uses three streams. The first stream converts the input image to grayscale, applies a log-Gabor filter bank, and extracts three PC-derived maps: PC magnitude, phase symmetry, and oriented energy. A small CNN encoder converts these maps into structural tokens. The second stream uses a pretrained ViT-B/16 backbone to produce semantic tokens from the RGB image. The third stream applies CLAHE-based illumination normalization and a shallow CNN to produce an auxiliary vector. In the full model, structural tokens query semantic tokens through cross-attention, and the fused representation is concatenated with the illumination vector before classification.
+
+\subsection{Ablation Design}
+To isolate the architectural contribution, we held the training recipe fixed and compared four forward-path ablations:
+\begin{itemize}
+    \item \textbf{full}: PC + ViT + CLAHE with cross-attention fusion
+    \item \textbf{backbone\_only}: ViT + CLAHE only
+    \item \textbf{no\_fusion}: PC + ViT + CLAHE without cross-attention
+    \item \textbf{pc\_only}: PC + CLAHE only
+\end{itemize}
+This design makes it possible to determine whether the PC stream itself helps, whether cross-attention adds value, and whether the gains are architectural or recipe-driven.
+
+\subsection{Training Recipe}
+The most effective configuration used label smoothing ($\epsilon=0.1$)~\cite{Szegedy2016}, differential learning rates with a lower backbone multiplier, exponential moving average (EMA)~\cite{Izmailov2018}, Sharpness-Aware Minimization (SAM)~\cite{Foret2021}, RandAugment~\cite{Cubuk2020}, shared-mask random erasing~\cite{Zhong2020}, HSV-masked background replacement, HSV leaf foreground gating, horizontal-flip test-time augmentation, and TENT adaptation at evaluation time~\cite{Wang2021}. These components were selected to reduce source overfitting and improve robustness to target-domain clutter and lighting changes.
+
+\subsection{Datasets and Evaluation}
+The main benchmark uses PlantVillage as source and PlantDoc as target with a 25-class mapped label space and a target test set of 153 images. We report source accuracy/F1 and target accuracy/macro-F1. We also include a strict 3-class apple-overlap follow-up using PlantVillage, PlantDoc, and Plant Pathology 2021 (PP2021), which provides a much larger real-world target set (n = 11{,}310) to corroborate the findings.
+
+\section{Results}
+\subsection{Main 25-Class OOD Benchmark}
+Table~\ref{tab:ablation} summarizes the central ablation result.
+
+\begin{table}[ht]
+\caption{PlantVillage $\rightarrow$ PlantDoc ablation results (target metrics include TTA+TENT).}
+\label{tab:ablation}
+\centering
+\begin{tabular}{lcccc}
+\toprule
+Ablation & Src Acc & Src F1 & Tgt Acc & Tgt F1 \\
+\midrule
+full+leafmask & 0.9975 & 0.9955 & 0.5229 & 0.3944 \\
+backbone\_only & 0.9975 & 0.9955 & 0.5229 & 0.3859 \\
+no\_fusion & 0.9975 & 0.9955 & 0.4902 & 0.3464 \\
+pc\_only & 0.7340 & 0.5878 & 0.0915 & 0.0791 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The most important observation is that \textbf{full} and \textbf{backbone\_only} have identical target accuracy and differ by only +0.009 macro-F1. This means the phase-congruency stream does not produce a meaningful OOD improvement over the semantic backbone under the same recipe. In contrast, the \textbf{pc\_only} model performs near random on target data despite carrying nontrivial source-domain signal. This reveals a gap between feature-level invariance and classifier-level generalization.
+
+\subsection{Recipe Improvement}
+Although the architectural claim was not validated, the training recipe itself improved target performance. Relative to the earlier plain-recipe baseline (47.71\% target accuracy, 0.3603 macro-F1), the final hardened configuration reached 52.29\% target accuracy and 0.3944 macro-F1. This corresponds to a gain of +4.6 percentage points in target accuracy and +3.4 points in target F1.
+
+\subsection{Apple-Overlap Follow-Up}
+The stricter 3-class apple-overlap benchmark showed that the remaining source-target gap is better explained by feature shift than by prior shift. On PP2021, the baseline reached 0.7136 accuracy and 0.6813 macro-F1. The best follow-up was softened inverse-frequency rebalancing with \texttt{balanced\_sampler\_power = 0.5}, which reached 0.7393 accuracy and 0.7015 macro-F1. In contrast, calibration-only fixes, including oracle-prior adjustment, did not improve macro-F1 over the baseline.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/apple_overlap_summary.png}
+    \caption{Summary of the strict apple-overlap evaluation across PlantDoc and PP2021.}
+    \label{fig:appleoverlap}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/full_training_curves.png}
+    \caption{Training and validation curves for the full PhasePhyto configuration.}
+    \label{fig:trainingcurves}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/confusion_matrices.png}
+    \caption{Confusion-matrix comparison from the final full-model artifact bundle.}
+    \label{fig:confusion}
+\end{figure}
+
+\section{Discussion}
+The main scientific finding is a negative one: \emph{amplitude-invariant features are not automatically classifier-invariant}. The PC operator itself satisfies the invariance property it was designed for~\cite{Kovesi1999}, but the learned classifier can still overfit source-specific structure present in those invariant features. Our results therefore point to what the project names the \textit{invariance--classifier-head gap}.
+
+The ablations also clarify the role of fusion. Removing cross-attention while keeping the PC stream (\textbf{no\_fusion}) hurts target performance more than removing the PC stream altogether (\textbf{backbone\_only}). This suggests cross-attention is acting more as a damage-control mechanism than as a source of new discriminative information.
+
+At the same time, the practical recipe is valuable. Label smoothing, EMA, SAM, strong augmentation, background replacement, leaf foreground gating, TTA, and TENT collectively improved transfer even when the PC stream itself did not. This means the project still contributes a reproducible and useful OOD workflow for botanical image classification.
+
+A second limitation is sample size. The 25-class PlantDoc target set has only 153 images after mapping, so tiny deltas cannot be treated as strong evidence on their own. The apple-overlap PP2021 benchmark partially addresses this by confirming the same generalization story on a larger target set.
+
+\section{Conclusion}
+This project developed and evaluated PhasePhyto, a physics-informed fusion architecture for botanical OOD classification. The final ablation results show that the original architectural claim does not hold on the PlantVillage $\rightarrow$ PlantDoc benchmark: the full model does not beat an equally-trained backbone-only model in a meaningful way, and the PC-only variant fails dramatically on the target domain. However, the project still delivers a strong practical contribution: a well-instrumented OOD training recipe and a rigorous empirical analysis of what does and does not transfer under domain shift. The broader lesson is that formal invariance in feature extraction does not guarantee OOD robustness at the classifier level.
+
+\section*{Acknowledgments}
+We thank the course staff and dataset creators whose resources made this project possible. We also acknowledge the publicly available PlantVillage, PlantDoc, and Plant Pathology 2021 datasets, as well as the open-source PyTorch, timm, and Hugging Face ecosystems used in the implementation and deployment workflow.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/analysis_sample_0.png}
+    \caption{Representative qualitative visualization from the saved output bundle: input image, phase-congruency maps, and cross-attention overlay.}
+    \label{fig:qualitative}
+\end{figure}
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

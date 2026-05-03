@@ -1,0 +1,31 @@
+                                                    precision    recall  f1-score   support
+
+                                Apple___Apple_scab       0.00      0.00      0.00        10
+                                 Apple___Black_rot       0.00      0.00      0.00         0
+                          Apple___Cedar_apple_rust       0.00      0.00      0.00        10
+                                   Apple___healthy       0.25      0.11      0.15         9
+                               Blueberry___healthy       0.14      0.27      0.18        11
+          Cherry_(including_sour)___Powdery_mildew       0.00      0.00      0.00         0
+                 Cherry_(including_sour)___healthy       0.00      0.00      0.00        10
+Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot       0.25      0.25      0.25         4
+                       Corn_(maize)___Common_rust_       0.33      0.10      0.15        10
+               Corn_(maize)___Northern_Leaf_Blight       0.00      0.00      0.00        12
+                            Corn_(maize)___healthy       0.00      0.00      0.00         0
+                                 Grape___Black_rot       0.00      0.00      0.00         8
+                      Grape___Esca_(Black_Measles)       0.00      0.00      0.00         0
+        Grape___Leaf_blight_(Isariopsis_Leaf_Spot)       0.00      0.00      0.00         0
+                                   Grape___healthy       0.00      0.00      0.00        12
+          Orange___Haunglongbing_(Citrus_greening)       0.00      0.00      0.00         0
+                            Peach___Bacterial_spot       0.00      0.00      0.00         0
+                                   Peach___healthy       1.00      0.22      0.36         9
+                     Pepper,_bell___Bacterial_spot       0.00      0.00      0.00         9
+                            Pepper,_bell___healthy       0.27      0.38      0.32         8
+                             Potato___Early_blight       0.43      0.38      0.40         8
+                              Potato___Late_blight       0.00      0.00      0.00         8
+                                  Potato___healthy       0.00      0.00      0.00         0
+                               Raspberry___healthy       0.00      0.00      0.00         7
+                                 Soybean___healthy       0.00      0.00      0.00         8
+
+                                          accuracy                           0.09       153
+                                         macro avg       0.11      0.07      0.07       153
+                                      weighted avg       0.15      0.09      0.10       153

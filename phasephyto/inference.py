@@ -34,7 +34,6 @@ def preprocess(image_path: str, image_size: int = 224):
         transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
     ])(clahe_np).unsqueeze(0)
 
-    # Also return display-ready resized image
     display_img = cv2.resize(img_np, (image_size, image_size))
     return rgb_tensor, clahe_tensor, display_img
 
@@ -86,7 +85,6 @@ def main():
 
         print(f"{img_path.name}: {pred_label} ({confidence:.2%})")
 
-        # Extract PC maps for visualisation
         pc_maps = {
             "pc_magnitude": output["pc_magnitude"][0, 0].cpu().numpy(),
             "phase_symmetry": output["phase_symmetry"][0, 0].cpu().numpy(),

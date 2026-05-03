@@ -72,21 +72,17 @@ class Trainer:
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         self.use_wandb = use_wandb and HAS_WANDB
 
-        # Optimiser
         self.optimizer = AdamW(
             model.parameters(), lr=lr, weight_decay=weight_decay
         )
 
-        # Scheduler: cosine annealing with warm restarts
         self.scheduler = CosineAnnealingWarmRestarts(
             self.optimizer, T_0=max(epochs - warmup_epochs, 1), T_mult=1
         )
 
-        # Mixed precision
         amp_device = device.split(":")[0]
         self.scaler = GradScaler(amp_device, enabled=(amp_device == "cuda"))
 
-        # Tracking
         self.best_val_f1 = 0.0
         self.epochs_no_improve = 0
 
@@ -112,7 +108,6 @@ class Trainer:
 
         pbar = tqdm(self.train_loader, desc=f"Epoch {epoch+1}/{self.epochs} [train]")
         for batch in pbar:
-            # Unpack: supports both (rgb, label) and (rgb, clahe, label)
             if len(batch) == 3:
                 rgb, clahe, labels = batch
                 rgb = rgb.to(self.device)
@@ -181,7 +176,6 @@ class Trainer:
             pred == label for pred, label in zip(all_preds, all_labels, strict=True)
         ) / total
 
-        # Macro F1
         from sklearn.metrics import f1_score
         f1 = f1_score(all_labels, all_preds, average="macro", zero_division=0)
 
@@ -199,18 +193,14 @@ class Trainer:
         }
 
         for epoch in range(self.epochs):
-            # Warmup
             self._warmup_lr(epoch)
 
-            # Train
             train_metrics = self.train_one_epoch(epoch)
             val_metrics = self.validate()
 
-            # Step scheduler after warmup
             if epoch >= self.warmup_epochs:
                 self.scheduler.step()
 
-            # Log
             for k, v in {**train_metrics, **val_metrics}.items():
                 history.setdefault(k, []).append(v)
 
@@ -226,7 +216,6 @@ class Trainer:
             if self.use_wandb:
                 wandb.log({**train_metrics, **val_metrics, "lr": lr, "epoch": epoch})
 
-            # Checkpoint best model
             if val_metrics["val_f1"] > self.best_val_f1:
                 self.best_val_f1 = val_metrics["val_f1"]
                 self.epochs_no_improve = 0
@@ -240,7 +229,6 @@ class Trainer:
             else:
                 self.epochs_no_improve += 1
 
-            # Early stopping
             if self.patience > 0 and self.epochs_no_improve >= self.patience:
                 print(
                     f"Early stopping at epoch {epoch+1} "

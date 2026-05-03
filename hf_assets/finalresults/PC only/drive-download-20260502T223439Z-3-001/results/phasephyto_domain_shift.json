@@ -1,0 +1,12 @@
+{
+  "source_acc": 0.7340229885057471,
+  "source_f1": 0.5878104721507619,
+  "target_acc": 0.0915032679738562,
+  "target_f1": 0.07908418812308973,
+  "delta_acc": -0.6425197205318909,
+  "delta_f1": -0.5087262840276722,
+  "checkpoint": "best (val F1)",
+  "tta_hflip": true,
+  "tent_enabled": true,
+  "tent_steps": 20
+}

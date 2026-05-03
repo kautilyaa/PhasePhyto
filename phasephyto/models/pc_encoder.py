@@ -37,15 +37,12 @@ class PCEncoder(nn.Module):
         self.fusion_dim = fusion_dim
 
         self.encoder = nn.Sequential(
-            # Layer 1: (B, 3, H, W) -> (B, mid, H/2, W/2)
             nn.Conv2d(in_channels, mid_channels, kernel_size=3, stride=2, padding=1),
             nn.BatchNorm2d(mid_channels),
             nn.GELU(),
-            # Layer 2: (B, mid, H/2, W/2) -> (B, fusion_dim, H/4, W/4)
             nn.Conv2d(mid_channels, fusion_dim, kernel_size=3, stride=2, padding=1),
             nn.BatchNorm2d(fusion_dim),
             nn.GELU(),
-            # Pool to fixed spatial size
             nn.AdaptiveAvgPool2d((spatial_size, spatial_size)),
         )
 
@@ -62,11 +59,8 @@ class PCEncoder(nn.Module):
         Returns:
             (B, spatial_size^2, fusion_dim) structural token sequence.
         """
-        # (B, 3, H, W) -> (B, fusion_dim, spatial_size, spatial_size)
         features = self.encoder(pc_maps)
         B, C, Hs, Ws = features.shape  # (B, fusion_dim, 7, 7)
 
-        # Flatten spatial dims and transpose to token sequence
-        # (B, C, Hs, Ws) -> (B, C, Hs*Ws) -> (B, Hs*Ws, C)
         tokens = features.flatten(2).transpose(1, 2)  # (B, 49, fusion_dim)
         return cast(torch.Tensor, tokens)

@@ -43,3 +43,13 @@ Thumbs.db
 .venv/
 venv/
 env/
+
+# Hugging Face / Streamlit demo assets
+!hf_assets/
+!hf_assets/**
+!streamlit_app.py
+!docker-compose.yml
+!Dockerfile
+!.env.example
+!.dockerignore
+!scripts/prepare_hf_space_assets.py

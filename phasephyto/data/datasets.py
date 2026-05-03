@@ -98,7 +98,6 @@ class PlantDiseaseDataset(Dataset):
         self.root = Path(root)
         self.transform = transform
 
-        # Discover classes from subdirectories
         class_dirs = sorted([d for d in self.root.iterdir() if d.is_dir()])
         if class_to_idx is not None:
             self.class_to_idx = class_to_idx
@@ -108,7 +107,6 @@ class PlantDiseaseDataset(Dataset):
         self.classes = list(self.class_to_idx.keys())
         self.num_classes = len(self.classes)
 
-        # Build sample list: (path, label)
         self.samples: list[tuple[Path, int]] = []
         for class_dir in class_dirs:
             if class_dir.name not in self.class_to_idx:
@@ -128,7 +126,6 @@ class PlantDiseaseDataset(Dataset):
         if self.transform is not None:
             result = self.transform(image)
             if isinstance(result, tuple):
-                # DualTransform returns (rgb_tensor, clahe_tensor)
                 return (*result, label)
             return result, label
 
@@ -222,7 +219,6 @@ class HistologyDataset(Dataset):
         if stain != "all":
             stain_dirs = [d for d in stain_dirs if stain.lower() in d.name.lower()]
 
-        # Collect all class names across stains
         all_classes: set[str] = set()
         for sd in stain_dirs:
             for cd in sd.iterdir():

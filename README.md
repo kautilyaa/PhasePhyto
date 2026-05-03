@@ -1,3 +1,14 @@
+---
+title: PhasePhyto Explorer
+emoji: 🌿
+colorFrom: green
+colorTo: blue
+sdk: docker
+app_port: 8501
+suggested_hardware: t4-small
+pinned: false
+---
+
 # PhasePhyto
 
 **A Rigorous OOD Study and Practical Recipe for Botanical Image Classification**
@@ -1011,3 +1022,98 @@ python -m pytest tests/test_model_forward.py -v
 ## License
 
 Apache-2.0
+
+
+## Streamlit / Hugging Face Space Deployment
+
+This repo now includes a Streamlit app (`streamlit_app.py`) plus Docker assets
+for local preview and Hugging Face Spaces deployment.
+
+### Local Docker preview
+
+1. Copy `.env.example` to `.env` and keep `PHASEPHYTO_EXTERNAL_ARTIFACTS`
+   pointed at your local final-results folder:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Start the app:
+
+   ```bash
+   docker compose up --build
+   ```
+
+3. Open `http://localhost:8501`.
+
+The compose flow mounts your existing
+`/Users/matheshwara/Downloads/DATA640_CV/Final Project/Finalresults` directory
+read-only into the container, so the large checkpoints do not need to be copied
+into the repo for local preview.
+
+### Hugging Face Space (Docker SDK)
+
+This repo is configured for a **Docker Space** that runs Streamlit on port
+`8501`.
+
+Published public endpoints:
+
+- Space: <https://huggingface.co/spaces/Mathesh0803/phasephyto-explorer>
+- Weights repo: <https://huggingface.co/Mathesh0803/phasephyto-weights>
+
+For an actual hosted Space you have two options:
+
+1. **Recommended for this repo:** keep the app code here, then copy the needed
+   checkpoints into a tracked folder such as `hf_assets/checkpoints/` using Git
+   LFS.
+2. Or adapt the app to download checkpoints/results from a separate Hugging Face
+   dataset/model repo at startup.
+
+This repo is already configured for the second pattern: if checkpoints are not
+found locally, the app will try to download public weights from
+`Mathesh0803/phasephyto-weights`.
+
+To prepare a lightweight artifact bundle from the local final project folder:
+
+```bash
+python scripts/prepare_hf_space_assets.py   --source '/Users/matheshwara/Downloads/DATA640_CV/Final Project/Finalresults'
+```
+
+That script copies small plots/results into `hf_assets/finalresults/` and
+extracts curated sample images into `hf_assets/samples/`. By default it does
+**not** copy checkpoints because they are large. If you want a self-contained
+Space repo, rerun it with:
+
+```bash
+python scripts/prepare_hf_space_assets.py   --source '/Users/matheshwara/Downloads/DATA640_CV/Final Project/Finalresults'   --include-checkpoints
+```
+
+### Demo app behavior
+
+- **Model selector:** Full, Full EMA, Backbone Only, No Fusion, Baseline ViT
+  (plus PC-only metrics when available).
+- **Curated samples:** only samples marked as known-good for a selected model
+  are offered in the sample dropdown.
+- **Metrics & plots tab:** lets you click through training curves, confusion
+  matrices, saved analysis panels, classification reports, and raw metric JSON.
+
+
+### One-command Hugging Face publishing helper
+
+Once you have a **write** Hugging Face token:
+
+```bash
+HF_TOKEN=hf_xxx python scripts/publish_hf_space.py \
+  --username Mathesh0803 \
+  --space-name phasephyto-explorer \
+  --weights-name phasephyto-weights \
+  --weights-source '/Users/matheshwara/Downloads/DATA640_CV/Final Project/Finalresults'
+```
+
+That helper creates/updates a public model repo for checkpoints and a public Docker Space for the Streamlit app.
+
+Current hosted layout:
+
+- public Space repo: `Mathesh0803/phasephyto-explorer`
+- public weights repo: `Mathesh0803/phasephyto-weights`
+- current default Space hardware request: `cpu-basic`

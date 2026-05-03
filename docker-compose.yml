@@ -1,0 +1,12 @@
+services:
+  phasephyto-space:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8501:8501"
+    environment:
+      PHASEPHYTO_ASSETS_ROOT: /external_artifacts
+    volumes:
+      - .:/app
+      - "${PHASEPHYTO_EXTERNAL_ARTIFACTS:-./hf_assets/finalresults}:/external_artifacts:ro"

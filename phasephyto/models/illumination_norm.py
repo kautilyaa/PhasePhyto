@@ -76,15 +76,12 @@ class IlluminationNormStream(nn.Module):
     ):
         super().__init__()
         self.net = nn.Sequential(
-            # Layer 1: (B, 3, H, W) -> (B, mid, H/2, W/2)
             nn.Conv2d(in_channels, mid_channels, kernel_size=3, stride=2, padding=1),
             nn.BatchNorm2d(mid_channels),
             nn.GELU(),
-            # Layer 2: (B, mid, H/2, W/2) -> (B, out_dim, H/4, W/4)
             nn.Conv2d(mid_channels, out_dim, kernel_size=3, stride=2, padding=1),
             nn.BatchNorm2d(out_dim),
             nn.GELU(),
-            # Global pool -> (B, out_dim, 1, 1)
             nn.AdaptiveAvgPool2d(1),
         )
 
