@@ -15,23 +15,22 @@
 \citation{Wang2021}
 \@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}{section.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {II}Methodology}{1}{section.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}Architecture}{1}{subsection.2.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-B}}Ablation Design}{1}{subsection.2.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-C}}Training Recipe}{1}{subsection.2.3}\protected@file@percent }
-\citation{Kovesi1999}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}PhasePhyto Architecture}{1}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-B}}Controlled Ablation Design}{1}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-C}}Training Recipe}{2}{subsection.2.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-D}}Datasets and Evaluation}{2}{subsection.2.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {III}Results}{2}{section.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}Main 25-Class OOD Benchmark}{2}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}Main 25-Class OOD Ablation}{2}{subsection.3.1}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces PlantVillage $\rightarrow $ PlantDoc ablation results (target metrics include TTA+TENT).}}{2}{table.1}\protected@file@percent }
 \newlabel{tab:ablation}{{I}{2}{PlantVillage $\rightarrow $ PlantDoc ablation results (target metrics include TTA+TENT)}{table.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}Recipe Improvement}{2}{subsection.3.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-C}}Apple-Overlap Follow-Up}{2}{subsection.3.3}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Summary of the strict apple-overlap evaluation across PlantDoc and PP2021.}}{2}{figure.1}\protected@file@percent }
-\newlabel{fig:appleoverlap}{{1}{2}{Summary of the strict apple-overlap evaluation across PlantDoc and PP2021}{figure.1}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Training and validation curves for the full PhasePhyto configuration.}}{2}{figure.2}\protected@file@percent }
-\newlabel{fig:trainingcurves}{{2}{2}{Training and validation curves for the full PhasePhyto configuration}{figure.2}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {IV}Discussion}{2}{section.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {V}Conclusion}{2}{section.5}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces PP2021 follow-up interventions on the apple-overlap benchmark.}}{2}{table.2}\protected@file@percent }
+\newlabel{tab:fixes}{{II}{2}{PP2021 follow-up interventions on the apple-overlap benchmark}{table.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}Recipe-Driven Improvement}{2}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-C}}Strict Apple-Overlap Benchmark}{2}{subsection.3.3}\protected@file@percent }
+\citation{Kovesi1999}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Training and validation dynamics across the four ablations. The full and backbone-only variants converge to similarly strong source performance, while the PC-only branch saturates early and never approaches competitive validation quality.}}{3}{figure.1}\protected@file@percent }
+\newlabel{fig:traininggrid}{{1}{3}{Training and validation dynamics across the four ablations. The full and backbone-only variants converge to similarly strong source performance, while the PC-only branch saturates early and never approaches competitive validation quality}{figure.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {IV}Discussion}{3}{section.4}\protected@file@percent }
 \bibstyle{IEEEtran}
 \bibdata{references}
 \bibcite{Hughes2015}{1}
@@ -43,9 +42,16 @@
 \bibcite{Cubuk2020}{7}
 \bibcite{Zhong2020}{8}
 \bibcite{Wang2021}{9}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Confusion-matrix comparison from the final full-model artifact bundle.}}{3}{figure.3}\protected@file@percent }
-\newlabel{fig:confusion}{{3}{3}{Confusion-matrix comparison from the final full-model artifact bundle}{figure.3}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Representative qualitative visualization from the saved output bundle: input image, phase-congruency maps, and cross-attention overlay.}}{3}{figure.4}\protected@file@percent }
-\newlabel{fig:qualitative}{{4}{3}{Representative qualitative visualization from the saved output bundle: input image, phase-congruency maps, and cross-attention overlay}{figure.4}{}}
-\@writefile{toc}{\contentsline {section}{References}{3}{section*.2}\protected@file@percent }
-\gdef \@abspage@last{3}
+\@writefile{toc}{\contentsline {section}{\numberline {V}Conclusion}{4}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{References}{4}{section*.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Additional diagnostics from the full-model artifact bundle. The illumination-invariance panel shows how frequency-domain maps remain structured under brightness changes; the leaf-mask sanity panel shows the gating used to suppress background clutter; the qualitative analysis panel visualizes PC maps and attention behavior on a representative sample.}}{5}{figure.2}\protected@file@percent }
+\newlabel{fig:diagnostics}{{2}{5}{Additional diagnostics from the full-model artifact bundle. The illumination-invariance panel shows how frequency-domain maps remain structured under brightness changes; the leaf-mask sanity panel shows the gating used to suppress background clutter; the qualitative analysis panel visualizes PC maps and attention behavior on a representative sample}{figure.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Source and target confusion-matrix comparison for the final full-model artifact bundle. The strong source performance contrasts sharply with the noisier target confusion pattern.}}{6}{figure.3}\protected@file@percent }
+\newlabel{fig:confusion}{{3}{6}{Source and target confusion-matrix comparison for the final full-model artifact bundle. The strong source performance contrasts sharply with the noisier target confusion pattern}{figure.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Baseline apple-overlap summary across PlantDoc and PP2021. The PP2021 gap is much larger and therefore more informative than the small PlantDoc test split.}}{6}{figure.4}\protected@file@percent }
+\newlabel{fig:appleoverlap}{{4}{6}{Baseline apple-overlap summary across PlantDoc and PP2021. The PP2021 gap is much larger and therefore more informative than the small PlantDoc test split}{figure.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces PP2021 macro comparison for the v2 apple-overlap follow-up. Softer rebalancing provides the strongest macro-F1 while maintaining high accuracy.}}{6}{figure.5}\protected@file@percent }
+\newlabel{fig:ppmacro}{{5}{6}{PP2021 macro comparison for the v2 apple-overlap follow-up. Softer rebalancing provides the strongest macro-F1 while maintaining high accuracy}{figure.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Per-class PP2021 F1 under calibration and rebalancing. The main win from rebalancing is stronger scab/healthy balance, while calibration does not recover the rust-specific feature-shift problem.}}{6}{figure.6}\protected@file@percent }
+\newlabel{fig:ppclassf1}{{6}{6}{Per-class PP2021 F1 under calibration and rebalancing. The main win from rebalancing is stronger scab/healthy balance, while calibration does not recover the rust-specific feature-shift problem}{figure.6}{}}
+\gdef \@abspage@last{6}

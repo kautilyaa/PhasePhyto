@@ -26,9 +26,9 @@ If you want the fastest path into Overleaf, upload:
 5. Compile with pdfLaTeX.
 
 ## Included figures
-- full model training curves
-- backbone-only training curves
-- no-fusion training curves
-- confusion matrices
+- ablation training-dynamics grid
+- full-model confusion matrices
 - apple-overlap evaluation summary
-- one qualitative analysis sample
+- PP2021 macro comparison for calibration vs rebalancing
+- PP2021 per-class F1 comparison
+- qualitative / illumination / leaf-mask diagnostics grid
