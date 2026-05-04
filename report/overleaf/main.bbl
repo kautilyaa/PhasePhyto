@@ -31,6 +31,10 @@ D.~Singh, N.~Jain, P.~Jain, P.~Kayal, S.~Kumawat, and N.~Batra, ``{PlantDoc}: A
   dataset for visual plant disease detection,'' in \emph{Proceedings of the 7th
   ACM IKDD CoDS and 25th COMAD}, 2020.
 
+\bibitem{Kovesi1999}
+P.~Kovesi, ``Image features from phase congruency,'' \emph{Videre: Journal of
+  Computer Vision Research}, vol.~1, no.~3, 1999.
+
 \bibitem{Dosovitskiy2021}
 A.~Dosovitskiy, L.~Beyer, A.~Kolesnikov, D.~Weissenborn, X.~Zhai,
   T.~Unterthiner, M.~Dehghani, M.~Minderer, G.~Heigold, S.~Gelly, J.~Uszkoreit,
@@ -38,49 +42,34 @@ A.~Dosovitskiy, L.~Beyer, A.~Kolesnikov, D.~Weissenborn, X.~Zhai,
   recognition at scale,'' in \emph{International Conference on Learning
   Representations (ICLR)}, 2021.
 
-\bibitem{Izmailov2018}
-P.~Izmailov, D.~Podoprikhin, T.~Garipov, D.~Vetrov, and A.~G. Wilson,
-  ``Averaging weights leads to wider optima and better generalization,''
-  \emph{arXiv preprint arXiv:1803.05407}, 2018.
-
-\bibitem{Foret2021}
-P.~Foret, A.~Kleiner, H.~Mobahi, and B.~Neyshabur, ``Sharpness-aware
-  minimization for efficiently improving generalization,'' in
-  \emph{International Conference on Learning Representations (ICLR)}, 2021.
-
-\bibitem{Cubuk2020}
-E.~D. Cubuk, B.~Zoph, J.~Shlens, and Q.~V. Le, ``{RandAugment}: Practical
-  automated data augmentation with a reduced search space,'' in
-  \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern
-  Recognition Workshops}, 2020.
-
-\bibitem{Zhong2020}
-Z.~Zhong, L.~Zheng, G.~Kang, S.~Li, and Y.~Yang, ``Random erasing data
-  augmentation,'' in \emph{Proceedings of the AAAI Conference on Artificial
-  Intelligence}, 2020.
+\bibitem{Mohanty2016}
+S.~P. Mohanty, D.~P. Hughes, and M.~Salath{\'e}, ``Using deep learning for
+  image-based plant disease detection,'' \emph{Frontiers in Plant Science},
+  vol.~7, p. 1419, 2016.
 
 \bibitem{Wang2021}
 D.~Wang, E.~Shelhamer, S.~Liu, B.~Olshausen, and T.~Darrell, ``Tent: Fully
   test-time adaptation by entropy minimization,'' in \emph{International
   Conference on Learning Representations (ICLR)}, 2021.
 
-\bibitem{Kovesi1999}
-P.~Kovesi, ``Image features from phase congruency,'' \emph{Videre: Journal of
-  Computer Vision Research}, vol.~1, no.~3, 1999.
+\bibitem{Foret2021}
+P.~Foret, A.~Kleiner, H.~Mobahi, and B.~Neyshabur, ``Sharpness-aware
+  minimization for efficiently improving generalization,'' in
+  \emph{International Conference on Learning Representations (ICLR)}, 2021.
 
-\bibitem{Thapa2020}
-R.~Thapa, K.~Zhang, N.~Snavely, S.~Belongie, and A.~Khan, ``The plant pathology
-  challenge 2020 data set to classify foliar disease of apples,''
-  \emph{Applications in Plant Sciences}, vol.~8, no.~9, p. e11390, 2020.
-
-\bibitem{Mohanty2016}
-S.~P. Mohanty, D.~P. Hughes, and M.~Salath{\'e}, ``Using deep learning for
-  image-based plant disease detection,'' \emph{Frontiers in Plant Science},
-  vol.~7, p. 1419, 2016.
+\bibitem{Izmailov2018}
+P.~Izmailov, D.~Podoprikhin, T.~Garipov, D.~Vetrov, and A.~G. Wilson,
+  ``Averaging weights leads to wider optima and better generalization,''
+  \emph{arXiv preprint arXiv:1803.05407}, 2018.
 
 \bibitem{Szegedy2016}
 C.~Szegedy, V.~Vanhoucke, S.~Ioffe, J.~Shlens, and Z.~Wojna, ``Rethinking the
   inception architecture for computer vision,'' in \emph{Proceedings of the
   IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, 2016.
+
+\bibitem{Thapa2020}
+R.~Thapa, K.~Zhang, N.~Snavely, S.~Belongie, and A.~Khan, ``The plant pathology
+  challenge 2020 data set to classify foliar disease of apples,''
+  \emph{Applications in Plant Sciences}, vol.~8, no.~9, p. e11390, 2020.
 
 \end{thebibliography}

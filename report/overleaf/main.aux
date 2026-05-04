@@ -1,7 +1,4 @@
 \relax 
-\providecommand\hyper@newdestlabel[2]{}
-\providecommand\HyField@AuxAddToFields[1]{}
-\providecommand\HyField@AuxAddToCoFields[2]{}
 \citation{Hughes2015}
 \citation{Singh2020}
 \citation{Kovesi1999}
@@ -12,12 +9,12 @@
 \citation{Wang2021}
 \citation{Foret2021}
 \citation{Izmailov2018}
+\@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {II}Related Work}{1}{}\protected@file@percent }
+\newlabel{sec:related}{{II}{1}{}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}Deep Learning for Plant Disease Detection}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-B}}Domain Adaptation and OOD Robustness}{1}{}\protected@file@percent }
 \citation{Kovesi1999}
-\@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}{section.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {II}Related Work}{1}{section.2}\protected@file@percent }
-\newlabel{sec:related}{{II}{1}{Related Work}{section.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}Deep Learning for Plant Disease Detection}{1}{subsection.2.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-B}}Domain Adaptation and OOD Robustness}{1}{subsection.2.2}\protected@file@percent }
 \citation{Singh2020}
 \citation{Mohanty2016}
 \citation{Singh2020}
@@ -28,75 +25,73 @@
 \citation{Wang2021}
 \citation{Hughes2015}
 \citation{Singh2020}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-C}}Physics-Informed and Invariant Feature Extraction}{2}{subsection.2.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-D}}Comparison with Published Baselines}{2}{subsection.2.4}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces PlantVillage to PlantDoc target accuracy across methods. Rows marked * use our 25 class mapped label space and 153 target samples.}}{2}{table.1}\protected@file@percent }
-\newlabel{tab:literature}{{I}{2}{PlantVillage to PlantDoc target accuracy across methods. Rows marked * use our 25 class mapped label space and 153 target samples}{table.1}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {III}Methodology}{2}{section.3}\protected@file@percent }
-\newlabel{sec:method}{{III}{2}{Methodology}{section.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}PhasePhyto Architecture}{2}{subsection.3.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}Training Recipe}{2}{subsection.3.2}\protected@file@percent }
-\newlabel{sec:recipe}{{\mbox  {III-B}}{2}{Training Recipe}{subsection.3.2}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces PhasePhyto training configuration.}}{2}{table.2}\protected@file@percent }
-\newlabel{tab:config}{{II}{2}{PhasePhyto training configuration}{table.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-C}}Datasets and Evaluation Protocol}{2}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-C}}Physics-Informed and Invariant Feature Extraction}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-D}}Comparison with Published Baselines}{2}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces PlantVillage to PlantDoc target accuracy across methods. Rows marked * use our 25 class mapped label space and 153 target samples.}}{2}{}\protected@file@percent }
+\newlabel{tab:literature}{{I}{2}{}{table.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {III}Methodology}{2}{}\protected@file@percent }
+\newlabel{sec:method}{{III}{2}{}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}PhasePhyto Architecture}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}Training Recipe}{2}{}\protected@file@percent }
+\newlabel{sec:recipe}{{\mbox  {III-B}}{2}{}{subsection.3.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces PhasePhyto training configuration.}}{2}{}\protected@file@percent }
+\newlabel{tab:config}{{II}{2}{}{table.2}{}}
 \citation{Thapa2020}
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces The three streams in PhasePhyto. The PC stream takes the grayscale image, runs it through a fixed log-Gabor filter bank with four scales and eight orientations, and encodes the resulting structural maps with a small CNN. The semantic stream feeds the RGB image into a pretrained ViT-B/16 and produces 197 patch tokens of dimension 768. The illumination stream applies CLAHE normalization and a shallow CNN. PC tokens query ViT patch tokens through eight head cross attention. The fused output is concatenated with the illumination embedding before the classifier head. The PC filter bank has no trainable parameters; everything else is learned.}}{3}{figure.1}\protected@file@percent }
-\newlabel{fig:architecture}{{1}{3}{The three streams in PhasePhyto. The PC stream takes the grayscale image, runs it through a fixed log-Gabor filter bank with four scales and eight orientations, and encodes the resulting structural maps with a small CNN. The semantic stream feeds the RGB image into a pretrained ViT-B/16 and produces 197 patch tokens of dimension 768. The illumination stream applies CLAHE normalization and a shallow CNN. PC tokens query ViT patch tokens through eight head cross attention. The fused output is concatenated with the illumination embedding before the classifier head. The PC filter bank has no trainable parameters; everything else is learned}{figure.1}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {IV}Results}{3}{section.4}\protected@file@percent }
-\newlabel{sec:results}{{IV}{3}{Results}{section.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Main 25 Class OOD Ablation}{3}{subsection.4.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces PlantVillage to PlantDoc ablation, target metrics with TTA and TENT, $n{=}153$.}}{3}{table.3}\protected@file@percent }
-\newlabel{tab:ablation}{{III}{3}{PlantVillage to PlantDoc ablation, target metrics with TTA and TENT, $n{=}153$}{table.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Training Dynamics and Source to Target Decoupling}{3}{subsection.4.2}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Source vs target dynamics for the full model. Source values come from the PlantVillage validation split. Target snapshots are raw evaluations during training (no TTA, no TENT). The final reported target accuracy of 52.29\% is with TTA and TENT applied to the best source F1 checkpoint.}}{3}{table.4}\protected@file@percent }
-\newlabel{tab:dynamics}{{IV}{3}{Source vs target dynamics for the full model. Source values come from the PlantVillage validation split. Target snapshots are raw evaluations during training (no TTA, no TENT). The final reported target accuracy of 52.29\% is with TTA and TENT applied to the best source F1 checkpoint}{table.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Per Class Target Performance}{3}{subsection.4.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}What the Recipe Actually Buys}{3}{subsection.4.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces The three streams in PhasePhyto. The PC stream takes the grayscale image, runs it through a fixed log-Gabor filter bank with four scales and eight orientations, and encodes the resulting structural maps with a small CNN. The semantic stream feeds the RGB image into a pretrained ViT-B/16 and produces 197 patch tokens of dimension 768. The illumination stream applies CLAHE normalization and a shallow CNN. PC tokens query ViT patch tokens through eight head cross attention. The fused output is concatenated with the illumination embedding before the classifier head. The PC filter bank has no trainable parameters; everything else is learned.}}{3}{}\protected@file@percent }
+\newlabel{fig:architecture}{{1}{3}{}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-C}}Datasets and Evaluation Protocol}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {IV}Results}{3}{}\protected@file@percent }
+\newlabel{sec:results}{{IV}{3}{}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Main 25 Class OOD Ablation}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Training Dynamics and Source to Target Decoupling}{3}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces PlantVillage to PlantDoc ablation, target metrics with TTA and TENT, $n{=}153$.}}{3}{}\protected@file@percent }
+\newlabel{tab:ablation}{{III}{3}{}{table.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Source vs target dynamics for the full model. Source values come from the PlantVillage validation split. Target snapshots are raw evaluations during training (no TTA, no TENT). The final reported target accuracy of 52.29\% is with TTA and TENT applied to the best source F1 checkpoint.}}{3}{}\protected@file@percent }
+\newlabel{tab:dynamics}{{IV}{3}{}{table.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Per Class Target Performance}{3}{}\protected@file@percent }
 \citation{Thapa2020}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Training and validation curves for the four ablations across 15 epochs. Top row is training loss, middle row is source validation accuracy, bottom row is target snapshots taken every three epochs. The full, backbone only, and no fusion variants all reach over 99.7\% source accuracy, but the target trajectory is flat or even declines after epoch 9, which means the source best checkpoint is not necessarily the target best checkpoint. The PC only variant never reaches a competitive source level, and its target collapse confirms that the structural stream alone is not enough.}}{4}{figure.2}\protected@file@percent }
-\newlabel{fig:traininggrid}{{2}{4}{Training and validation curves for the four ablations across 15 epochs. Top row is training loss, middle row is source validation accuracy, bottom row is target snapshots taken every three epochs. The full, backbone only, and no fusion variants all reach over 99.7\% source accuracy, but the target trajectory is flat or even declines after epoch 9, which means the source best checkpoint is not necessarily the target best checkpoint. The PC only variant never reaches a competitive source level, and its target collapse confirms that the structural stream alone is not enough}{figure.2}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Source (PlantVillage) and target (PlantDoc) confusion matrices for the full model with TTA and TENT. The source matrix is nearly diagonal. The target matrix is diffuse across many classes, which is consistent with domain shift rather than underfitting.}}{4}{figure.3}\protected@file@percent }
-\newlabel{fig:confusion}{{3}{4}{Source (PlantVillage) and target (PlantDoc) confusion matrices for the full model with TTA and TENT. The source matrix is nearly diagonal. The target matrix is diffuse across many classes, which is consistent with domain shift rather than underfitting}{figure.3}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Qualitative diagnostic for the full model. From left to right: input leaf, PC magnitude, phase symmetry, and the cross attention overlay. Attention concentrates on lesion edges and vein structure, so the model does respond to biologically meaningful features even though the OOD accuracy is modest.}}{4}{figure.4}\protected@file@percent }
-\newlabel{fig:qualitative}{{4}{4}{Qualitative diagnostic for the full model. From left to right: input leaf, PC magnitude, phase symmetry, and the cross attention overlay. Attention concentrates on lesion edges and vein structure, so the model does respond to biologically meaningful features even though the OOD accuracy is modest}{figure.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Strict Apple Overlap Benchmark}{4}{subsection.4.5}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Per class target metrics for the full model with TTA and TENT. Classes with zero support are excluded. Names are abbreviated for space.}}{5}{table.5}\protected@file@percent }
-\newlabel{tab:perclass}{{V}{5}{Per class target metrics for the full model with TTA and TENT. Classes with zero support are excluded. Names are abbreviated for space}{table.5}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Illumination invariance check. The CLAHE stream reduces within class lighting variance before classification, which is one of the larger nuisance factors when going from PlantVillage to PlantDoc.}}{5}{figure.5}\protected@file@percent }
-\newlabel{fig:illumination}{{5}{5}{Illumination invariance check. The CLAHE stream reduces within class lighting variance before classification, which is one of the larger nuisance factors when going from PlantVillage to PlantDoc}{figure.5}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {V}Discussion}{5}{section.5}\protected@file@percent }
-\newlabel{sec:discussion}{{V}{5}{Discussion}{section.5}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces HSV leaf mask sanity check. The green overlay is the foreground produced by the saturation threshold. The mask separates the leaf from background reasonably well, which is what we need before extracting PC features so they are computed on leaf pixels rather than background.}}{5}{figure.6}\protected@file@percent }
-\newlabel{fig:leafmask}{{6}{5}{HSV leaf mask sanity check. The green overlay is the foreground produced by the saturation threshold. The mask separates the leaf from background reasonably well, which is what we need before extracting PC features so they are computed on leaf pixels rather than background}{figure.6}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Apple overlap baseline. Source accuracy is 99.96\% on both targets. PP2021 macro F1 (0.6813) is much lower than PlantDoc apple overlap macro F1 (0.8632). The PlantDoc result is on only 29 samples and should be treated as anecdotal.}}{5}{figure.7}\protected@file@percent }
-\newlabel{fig:appleoverlap}{{7}{5}{Apple overlap baseline. Source accuracy is 99.96\% on both targets. PP2021 macro F1 (0.6813) is much lower than PlantDoc apple overlap macro F1 (0.8632). The PlantDoc result is on only 29 samples and should be treated as anecdotal}{figure.7}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Training and validation curves for the four ablations across 15 epochs. Top row is training loss, middle row is source validation accuracy, bottom row is target snapshots taken every three epochs. The full, backbone only, and no fusion variants all reach over 99.7\% source accuracy, but the target trajectory is flat or even declines after epoch 9, which means the source best checkpoint is not necessarily the target best checkpoint. The PC only variant never reaches a competitive source level, and its target collapse confirms that the structural stream alone is not enough.}}{4}{}\protected@file@percent }
+\newlabel{fig:traininggrid}{{2}{4}{}{figure.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}What the Recipe Actually Buys}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Strict Apple Overlap Benchmark}{4}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Source (PlantVillage) and target (PlantDoc) confusion matrices for the full model with TTA and TENT. The source matrix is nearly diagonal. The target matrix is diffuse across many classes, which is consistent with domain shift rather than underfitting.}}{4}{}\protected@file@percent }
+\newlabel{fig:confusion}{{3}{4}{}{figure.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Per class target metrics for the full model with TTA and TENT. Classes with zero support are excluded. Names are abbreviated for space.}}{5}{}\protected@file@percent }
+\newlabel{tab:perclass}{{V}{5}{}{table.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Qualitative diagnostic for the full model. From left to right: input leaf, PC magnitude, phase symmetry, and the cross attention overlay. Attention concentrates on lesion edges and vein structure, so the model does respond to biologically meaningful features even though the OOD accuracy is modest.}}{5}{}\protected@file@percent }
+\newlabel{fig:qualitative}{{4}{5}{}{figure.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Illumination invariance check. The CLAHE stream reduces within class lighting variance before classification, which is one of the larger nuisance factors when going from PlantVillage to PlantDoc.}}{5}{}\protected@file@percent }
+\newlabel{fig:illumination}{{5}{5}{}{figure.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces HSV leaf mask sanity check. The green overlay is the foreground produced by the saturation threshold. The mask separates the leaf from background reasonably well, which is what we need before extracting PC features so they are computed on leaf pixels rather than background.}}{5}{}\protected@file@percent }
+\newlabel{fig:leafmask}{{6}{5}{}{figure.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Apple overlap baseline. Source accuracy is 99.96\% on both targets. PP2021 macro F1 (0.6813) is much lower than PlantDoc apple overlap macro F1 (0.8632). The PlantDoc result is on only 29 samples and should be treated as anecdotal.}}{5}{}\protected@file@percent }
+\newlabel{fig:appleoverlap}{{7}{5}{}{figure.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {V}Discussion}{5}{}\protected@file@percent }
+\newlabel{sec:discussion}{{V}{5}{}{section.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces PP2021 apple overlap interventions, $n{=}11{,}310$. Fix A applies prior calibration to logits at inference. Fix B re weights the source sampler at training time.}}{6}{}\protected@file@percent }
+\newlabel{tab:fixes}{{VI}{6}{}{table.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Macro accuracy and F1 on PP2021 across all interventions. Fix B with softer rebalancing has the best macro F1. Fix A interventions are either net harmful or roughly flat, which says calibration alone is not enough.}}{6}{}\protected@file@percent }
+\newlabel{fig:ppmacro}{{8}{6}{}{figure.8}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Per class F1 on PP2021 under each intervention. Full rebalancing pushes scab F1 up to 0.7085 but drops cedar apple rust to 0.5551. The softer setting brings rust back to 0.5820 while keeping scab and healthy gains, which is why it has the best macro F1.}}{6}{}\protected@file@percent }
+\newlabel{fig:ppclassf1}{{9}{6}{}{figure.9}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {VII}{\ignorespaces Per class PP2021 metrics for the best variant (Fix B softer rebalance, $\text  {power}=0.5$).}}{6}{}\protected@file@percent }
+\newlabel{tab:perclass_apple}{{VII}{6}{}{table.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {VI}Conclusion}{6}{}\protected@file@percent }
+\newlabel{sec:conclusion}{{VI}{6}{}{section.6}{}}
 \citation{Hughes2015}
 \citation{Singh2020}
 \citation{Thapa2020}
-\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces PP2021 apple overlap interventions, $n{=}11{,}310$. Fix A applies prior calibration to logits at inference. Fix B re weights the source sampler at training time.}}{6}{table.6}\protected@file@percent }
-\newlabel{tab:fixes}{{VI}{6}{PP2021 apple overlap interventions, $n{=}11{,}310$. Fix A applies prior calibration to logits at inference. Fix B re weights the source sampler at training time}{table.6}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Macro accuracy and F1 on PP2021 across all interventions. Fix B with softer rebalancing has the best macro F1. Fix A interventions are either net harmful or roughly flat, which says calibration alone is not enough.}}{6}{figure.8}\protected@file@percent }
-\newlabel{fig:ppmacro}{{8}{6}{Macro accuracy and F1 on PP2021 across all interventions. Fix B with softer rebalancing has the best macro F1. Fix A interventions are either net harmful or roughly flat, which says calibration alone is not enough}{figure.8}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Per class F1 on PP2021 under each intervention. Full rebalancing pushes scab F1 up to 0.7085 but drops cedar apple rust to 0.5551. The softer setting brings rust back to 0.5820 while keeping scab and healthy gains, which is why it has the best macro F1.}}{6}{figure.9}\protected@file@percent }
-\newlabel{fig:ppclassf1}{{9}{6}{Per class F1 on PP2021 under each intervention. Full rebalancing pushes scab F1 up to 0.7085 but drops cedar apple rust to 0.5551. The softer setting brings rust back to 0.5820 while keeping scab and healthy gains, which is why it has the best macro F1}{figure.9}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {VII}{\ignorespaces Per class PP2021 metrics for the best variant (Fix B softer rebalance, $\text  {power}=0.5$).}}{6}{table.7}\protected@file@percent }
-\newlabel{tab:perclass_apple}{{VII}{6}{Per class PP2021 metrics for the best variant (Fix B softer rebalance, $\text {power}=0.5$)}{table.7}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {VI}Conclusion}{6}{section.6}\protected@file@percent }
-\newlabel{sec:conclusion}{{VI}{6}{Conclusion}{section.6}{}}
 \bibstyle{IEEEtran}
 \bibdata{references}
 \bibcite{Hughes2015}{1}
 \bibcite{Singh2020}{2}
-\bibcite{Dosovitskiy2021}{3}
-\bibcite{Izmailov2018}{4}
-\bibcite{Foret2021}{5}
-\bibcite{Cubuk2020}{6}
-\bibcite{Zhong2020}{7}
-\bibcite{Wang2021}{8}
-\bibcite{Kovesi1999}{9}
+\bibcite{Kovesi1999}{3}
+\bibcite{Dosovitskiy2021}{4}
+\bibcite{Mohanty2016}{5}
+\bibcite{Wang2021}{6}
+\bibcite{Foret2021}{7}
+\bibcite{Izmailov2018}{8}
+\bibcite{Szegedy2016}{9}
 \bibcite{Thapa2020}{10}
-\bibcite{Mohanty2016}{11}
-\bibcite{Szegedy2016}{12}
-\@writefile{toc}{\contentsline {section}{References}{7}{section*.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{References}{7}{}\protected@file@percent }
 \gdef \@abspage@last{7}
