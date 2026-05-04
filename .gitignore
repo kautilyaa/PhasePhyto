@@ -1,4 +1,5 @@
 # Python
+.pptx_deps/
 __pycache__/
 *.py[cod]
 *$py.class
