@@ -2,33 +2,51 @@
   "samples": [
     {
       "key": "apple_scab_good_1",
-      "source_plot": "Full/drive-download-20260502T223147Z-3-001/plots/analysis_sample_0.png",
       "label": "Apple___Apple_scab",
       "label_index": 0,
-      "known_good_models": [
-        "full",
-        "full_ema",
-        "backbone_only",
-        "no_fusion",
-        "baseline"
-      ],
       "image_path": "samples/apple_scab_good_1.png",
-      "source_plot_path": "finalresults/Full/drive-download-20260502T223147Z-3-001/plots/analysis_sample_0.png"
+      "source_plot_path": "finalresults/Full/drive-download-20260502T223147Z-3-001/plots/analysis_sample_0.png",
+      "known_good_models": ["full", "full_ema", "backbone_only", "no_fusion", "baseline"]
     },
     {
       "key": "apple_scab_good_2",
-      "source_plot": "Full/drive-download-20260502T223147Z-3-001/plots/analysis_sample_2.png",
       "label": "Apple___Apple_scab",
       "label_index": 0,
-      "known_good_models": [
-        "full",
-        "full_ema",
-        "backbone_only",
-        "no_fusion",
-        "baseline"
-      ],
       "image_path": "samples/apple_scab_good_2.png",
-      "source_plot_path": "finalresults/Full/drive-download-20260502T223147Z-3-001/plots/analysis_sample_2.png"
+      "source_plot_path": "finalresults/Full/drive-download-20260502T223147Z-3-001/plots/analysis_sample_2.png",
+      "known_good_models": ["full", "full_ema", "backbone_only", "no_fusion", "baseline"]
+    },
+    {
+      "key": "peach_leaf",
+      "label": "Peach___healthy",
+      "label_index": 17,
+      "image_path": "samples/peach_leaf.jpg",
+      "source_plot_path": "",
+      "known_good_models": ["full", "full_ema", "backbone_only", "no_fusion", "baseline"]
+    },
+    {
+      "key": "bell_pepper_bacterial_spot",
+      "label": "Pepper,_bell___Bacterial_spot",
+      "label_index": 18,
+      "image_path": "samples/bell_pepper_bacterial_spot.jpg",
+      "source_plot_path": "",
+      "known_good_models": ["full", "full_ema", "backbone_only", "no_fusion", "baseline"]
+    },
+    {
+      "key": "grape_leaf",
+      "label": "Grape___healthy",
+      "label_index": 14,
+      "image_path": "samples/grape_leaf.jpg",
+      "source_plot_path": "",
+      "known_good_models": ["full", "full_ema", "backbone_only", "no_fusion", "baseline"]
+    },
+    {
+      "key": "tomato_leaf",
+      "label": "(out-of-distribution: tomato leaf)",
+      "label_index": -1,
+      "image_path": "samples/tomato_leaf.jpg",
+      "source_plot_path": "",
+      "known_good_models": ["full", "full_ema", "backbone_only", "no_fusion", "baseline"]
     }
   ]
 }

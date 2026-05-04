@@ -9,14 +9,17 @@
 \usepackage{url}
 \usepackage{xcolor}
 \usepackage{hyperref}
+\usepackage{array}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, shapes.geometric, positioning, calc, backgrounds, fit}
 \hypersetup{hidelinks}
 
-\title{PhasePhyto: A Rigorous OOD Study of Physics-Informed Fusion for Botanical Image Classification}
+\title{PhasePhyto: Physics-Informed Fusion for Robust Botanical Disease Classification Under Domain Shift}
 
 \author{%
 \IEEEauthorblockN{Matheshwara Annamalai Senthilkumar, Arunbh Yashaswi}
 \IEEEauthorblockA{Group 25\\
-University of Maryland, Baltimore County\\
+University of Maryland, College Park\\
 UID: 121281500, 121304537}
 }
 
@@ -24,51 +27,228 @@ UID: 121281500, 121304537}
 \maketitle
 
 \begin{abstract}
-This project studies out-of-distribution (OOD) plant disease classification using PlantVillage as the source domain and PlantDoc as the target domain~\cite{Hughes2015,Singh2020}. We developed \textit{PhasePhyto}, a three-stream architecture that combines phase congruency features, a ViT-B/16 semantic backbone, and a CLAHE-based illumination stream through cross-attention. The original hypothesis was that phase congruency's formal amplitude invariance would improve transfer from clean laboratory imagery to cluttered field imagery. Our controlled ablation study shows that this hypothesis is not supported: the full model and a backbone-only variant achieve identical target accuracy (0.5229), while the phase-congruency-only variant collapses to near-random target performance (macro-F1 0.0791). However, the broader OOD recipe---label smoothing, differential learning rates, EMA, SAM, strong augmentation, HSV foreground gating, horizontal-flip TTA, and TENT---improves the target accuracy of the system from 47.71\% to 52.29\%. A second strict apple-overlap benchmark on PlantVillage, PlantDoc, and Plant Pathology 2021 further shows that softened class rebalancing is more effective than post-hoc calibration, raising PP2021 macro-F1 from 0.6813 to 0.7015. The final outcome is therefore both a negative result on the architectural claim and a practical recipe for stronger botanical transfer under domain shift.
+This project looks at how plant disease classifiers behave when they are trained on clean lab images and then tested on real field images. We use PlantVillage~\cite{Hughes2015} as the source dataset and PlantDoc~\cite{Singh2020} as the target. A plain Vision Transformer fine tuned on PlantVillage with no extra tricks reaches only 28.76\% accuracy on PlantDoc. Adding a layered training recipe (label smoothing, differential learning rates, exponential moving average, sharpness aware minimization, RandAugment, random erasing, an HSV foreground mask, horizontal flip test time augmentation, and TENT) lifts the same backbone to 52.29\%. That is a 23.5 point gain and is the main practical result of the project. We also built PhasePhyto, a three stream architecture that adds a fixed Phase Congruency feature stream and a CLAHE illumination stream on top of the ViT backbone, fused through cross attention. Even though Phase Congruency is mathematically invariant to amplitude changes, the full PhasePhyto model and the backbone only variant land at the same target accuracy (0.5229), and a Phase Congruency only variant collapses to 9.15\% on the target. So the recipe is the part that actually transfers. In a separate three class apple overlap benchmark across PlantVillage, PlantDoc, and Plant Pathology 2021 ($n{=}11{,}310$), softer class rebalancing during training raises macro F1 from 0.6813 to 0.7015, and beats post hoc prior calibration even with an oracle prior.
 \end{abstract}
 
 \section{Introduction}
-Plant disease classifiers often perform extremely well on curated benchmark data but degrade sharply when deployed in real field conditions. This project focuses on the PlantVillage $\rightarrow$ PlantDoc setting~\cite{Hughes2015,Singh2020}, where the source domain contains isolated leaves with uniform backgrounds and stable lighting, while the target domain contains clutter, occlusion, viewpoint changes, and severe illumination variation. The resulting generalization gap is large enough that it serves as a useful benchmark for studying OOD robustness rather than only in-distribution accuracy.
 
-Our initial hypothesis was inspired by image phase congruency (PC), a frequency-domain feature operator that measures local phase alignment and is formally invariant to monotonic amplitude scaling~\cite{Kovesi1999}. Intuitively, this suggested that PC might capture structural lesion boundaries in a way that is less sensitive to lighting changes than raw RGB intensities. We therefore built a fusion architecture that explicitly combines physics-informed structural cues with a strong pretrained semantic backbone.
+Plant disease classifiers tend to look very strong on benchmark splits but fall apart on field images. PlantVillage images have isolated leaves on uniform backgrounds with stable lighting. PlantDoc images have clutter, occlusion, weird angles, and harsh lighting. The gap between the two is wide enough to use it as an out of distribution (OOD) benchmark on its own. In our setup, a plain ViT-B/16 fine tuned on PlantVillage gets 28.76\% accuracy on PlantDoc, which is a useful starting point for measuring how much a training recipe can help.
 
-The project ultimately became a controlled empirical study of what does and does not transfer OOD. Two guiding questions remained central throughout: \emph{(1) does PC fusion help plant-disease transfer under domain shift?} and \emph{(2) which practical training interventions produce reliable gains even if the original architecture hypothesis fails?} The answer to the first question is negative on our benchmark; the answer to the second is positive, and it yields the main practical contribution of the work.
+Our starting hypothesis was that Phase Congruency (PC) features could close part of that gap. PC is a frequency domain operator that measures local phase alignment across a log-Gabor filter bank, and it is provably invariant to monotonic amplitude scaling~\cite{Kovesi1999}. The intuition was that PC should pick up lesion edges and structural texture without caring about the lighting. We built PhasePhyto on top of that idea: a three stream model that combines fixed PC feature maps, a pretrained Vision Transformer backbone (ViT-B/16)~\cite{Dosovitskiy2021}, and a CLAHE based illumination stream, with cross attention fusion between the PC and ViT streams.
 
-\section{Methodology}
-\subsection{PhasePhyto Architecture}
-PhasePhyto uses three streams. The first converts the input image to grayscale, applies a log-Gabor filter bank, and derives three structural maps: PC magnitude, phase symmetry, and oriented energy. A lightweight CNN encoder converts these into structural tokens. The second stream uses a pretrained ViT-B/16 backbone to produce semantic tokens from the RGB image. The third stream applies CLAHE-based illumination normalization and a shallow CNN to produce an auxiliary illumination vector. In the full model, structural tokens query semantic tokens through cross-attention, and the fused representation is concatenated with the illumination vector before classification.
+Two questions ran through the project:
 
-This design was intended to embed a physics-based inductive bias directly into the model rather than relying only on learned invariance from augmentation. The PC branch is especially appealing in theory because it has no trainable filters at the feature-extraction stage: the log-Gabor bank is fixed, and only the downstream token encoder and fusion module are learned.
+\begin{enumerate}
+    \item Does PC fusion actually help OOD transfer on plant disease images?
+    \item Which training and test time choices give reliable gains regardless of architecture?
+\end{enumerate}
 
-\subsection{Controlled Ablation Design}
-To isolate the architectural contribution, we held the training recipe fixed and compared four forward-path ablations:
-\begin{itemize}
-    \item \textbf{full}: PC + ViT + CLAHE with cross-attention fusion
-    \item \textbf{backbone\_only}: ViT + CLAHE only
-    \item \textbf{no\_fusion}: PC + ViT + CLAHE without cross-attention
-    \item \textbf{pc\_only}: PC + CLAHE only
-\end{itemize}
-This makes it possible to determine whether the PC stream itself helps, whether cross-attention adds value, and whether observed gains are architectural or instead come from the training recipe.
+The answer to the first is no on this benchmark. The answer to the second is yes, and the recipe we ended up with closes the plain baseline gap by 23.5 points and works across every model variant we tried. The rest of the paper goes through related work, methodology, results, and what we take away.
 
-\subsection{Training Recipe}
-The most effective configuration used label smoothing ($\epsilon=0.1$)~\cite{Szegedy2016}, differential learning rates with a lower backbone multiplier, exponential moving average (EMA)~\cite{Izmailov2018}, Sharpness-Aware Minimization (SAM)~\cite{Foret2021}, RandAugment~\cite{Cubuk2020}, shared-mask random erasing~\cite{Zhong2020}, HSV-masked background replacement, HSV leaf foreground gating, horizontal-flip test-time augmentation, and TENT adaptation at evaluation time~\cite{Wang2021}. These choices were motivated by a practical goal: reduce source overfitting while improving tolerance to target-domain clutter and lighting noise.
+\section{Related Work}
+\label{sec:related}
 
-\subsection{Datasets and Evaluation}
-The primary benchmark uses PlantVillage as source and PlantDoc as target with a 25-class mapped label space and a target test set of 153 images. We report source accuracy/F1 and target accuracy/macro-F1. Because the target set is small, we also designed a stricter follow-up benchmark on the shared 3-class apple label space across PlantVillage, PlantDoc, and Plant Pathology 2021 (PP2021). This overlap benchmark provides a much larger real-world target set (n = 11{,}310) and lets us test whether observed failure modes are due mainly to class-prior mismatch or to genuine feature shift.
+\subsection{Deep Learning for Plant Disease Detection}
 
-\section{Results}
-\subsection{Main 25-Class OOD Ablation}
-Table~\ref{tab:ablation} summarizes the central ablation result.
+Mohanty et al.~\cite{Mohanty2016} showed that convolutional neural networks (CNNs) trained on PlantVillage can hit over 99\% in distribution accuracy across 26 disease categories. They explicitly noted that this was on controlled lab style images and did not test field transfer. Hughes and Salathe~\cite{Hughes2015} reported similar lab numbers and flagged the gap to field conditions as the open problem. Singh et al.~\cite{Singh2020} introduced PlantDoc to make that gap measurable, and reported that ImageNet pretrained networks moved from PlantVillage to PlantDoc reach roughly 20 to 52\% accuracy depending on architecture and on how much PlantDoc specific preprocessing is used. Our plain ViT-B/16 baseline of 28.76\% lands inside that range, which is a sanity check that our setup is consistent with prior work.
+
+\subsection{Domain Adaptation and OOD Robustness}
+
+Test time adaptation has become a popular way to close domain gaps without target labels. TENT~\cite{Wang2021} updates only the affine parameters of normalization layers at inference time so that the predictions on target batches have lower entropy. Sharpness aware minimization (SAM)~\cite{Foret2021} looks for flat regions of the loss surface and tends to generalize better OOD. Exponential moving average (EMA) weight averaging~\cite{Izmailov2018} smooths the optimization trajectory and also helps generalization. Our recipe uses all three, on top of strong augmentation. The ablation in Section~\ref{sec:results} suggests these recipe pieces account for most of the OOD gain we see.
+
+\subsection{Physics-Informed and Invariant Feature Extraction}
+
+Phase congruency, introduced by Kovesi~\cite{Kovesi1999}, measures how consistent local phase is across spatial frequency bands. Unlike standard gradient based edge detectors, the output is invariant to monotonic amplitude transforms, which makes it appealing in tasks where lighting changes between train and test. PC has been used in medical imaging and texture classification, but to our knowledge there is no controlled study of PC for OOD transfer in plant pathology, so that is what we set out to provide.
+
+\subsection{Comparison with Published Baselines}
+
+Table~\ref{tab:literature} shows where our results sit against what has been reported in the literature. The 28.76\% plain baseline matches the lower end of direct transfer numbers in Singh et al.~\cite{Singh2020}. The recipe hardened backbone only model at 52.29\% sits at the higher end. Different papers use different label sets and test splits, so the comparison is meant as a sanity check rather than a head to head ranking.
 
 \begin{table}[ht]
-\caption{PlantVillage $\rightarrow$ PlantDoc ablation results (target metrics include TTA+TENT).}
+\caption{PlantVillage to PlantDoc target accuracy across methods. Rows marked * use our 25 class mapped label space and 153 target samples.}
+\label{tab:literature}
+\centering
+\begin{tabular}{lcc}
+\toprule
+Method & Src Acc & Tgt Acc \\
+\midrule
+CNN (Mohanty et al.~\cite{Mohanty2016}) & 99.35\% & N/A \\
+Best direct transfer (Singh et al.~\cite{Singh2020}) & $\sim$99\% & $\sim$52\% \\
+\midrule
+Plain ViT-B/16, no recipe* & 99.31\% & 28.76\% \\
+PhasePhyto recipe, no fusion* & 99.75\% & 49.02\% \\
+PhasePhyto recipe, backbone only* & 99.75\% & \textbf{52.29\%} \\
+PhasePhyto recipe, full model* & 99.75\% & \textbf{52.29\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Methodology}
+\label{sec:method}
+
+\subsection{PhasePhyto Architecture}
+
+\begin{figure*}[t]
+\centering
+\begin{tikzpicture}[
+  inp/.style   = {draw=gray!60, fill=gray!10, rounded corners=4pt,
+                  minimum width=1.5cm, minimum height=1.1cm,
+                  align=center, font=\footnotesize},
+  pcblk/.style = {draw=cyan!70!black, fill=cyan!8, rounded corners=4pt,
+                  minimum width=2.0cm, minimum height=0.9cm,
+                  align=center, font=\footnotesize},
+  vitblk/.style= {draw=blue!60!black, fill=blue!7, rounded corners=4pt,
+                  minimum width=2.0cm, minimum height=0.9cm,
+                  align=center, font=\footnotesize},
+  illblk/.style= {draw=orange!70!black, fill=orange!8, rounded corners=4pt,
+                  minimum width=2.0cm, minimum height=0.9cm,
+                  align=center, font=\footnotesize},
+  fushex/.style= {regular polygon, regular polygon sides=6,
+                  draw=purple!60!black, fill=purple!8,
+                  minimum size=1.9cm, align=center, font=\footnotesize\bfseries},
+  outblk/.style= {draw=green!60!black, fill=green!7, rounded corners=4pt,
+                  minimum width=1.8cm, minimum height=0.9cm,
+                  align=center, font=\footnotesize},
+  lbl/.style   = {font=\scriptsize\itshape, text=gray!70!black},
+  pcarr/.style = {-{Stealth[length=5pt]}, thick, cyan!70!black},
+  vitarr/.style= {-{Stealth[length=5pt]}, thick, blue!60!black},
+  illarr/.style= {-{Stealth[length=5pt]}, thick, orange!70!black},
+  fuarr/.style = {-{Stealth[length=5pt]}, thick, purple!50!black},
+]
+
+\node[inp] (input) {Raw Field\\Image\\(RGB)};
+
+\node[pcblk, right=1.4cm of input, yshift= 1.7cm] (loggabor)
+      {Log-Gabor\\Filter Bank\\{\scriptsize(fixed, 4 scales)}};
+\node[pcblk, right=1.2cm of loggabor] (pcenc)
+      {PC Token\\Encoder\\{\scriptsize(CNN, 150K)}};
+
+\node[vitblk, right=1.4cm of input] (vit)
+      {ViT-B/16\\Backbone\\{\scriptsize(86M params)}};
+\node[vitblk, right=1.2cm of vit] (patchtok)
+      {Patch Tokens\\{\scriptsize 197\,$\times$\,768}};
+
+\node[illblk, right=1.4cm of input, yshift=-1.7cm] (clahe)
+      {CLAHE\\Norm.};
+\node[illblk, right=1.2cm of clahe] (illcnn)
+      {Illum.\ CNN\\{\scriptsize(150K)}};
+
+\node[fushex, right=1.6cm of patchtok] (fusion)
+      {Cross\\Attn\\Fusion};
+
+\node[outblk, right=1.4cm of fusion] (clf)
+      {Classifier\\Head\\{\scriptsize(138K)}};
+\node[right=1.1cm of clf, align=center, font=\small\bfseries,
+      text=green!50!black] (out) {Disease\\Class};
+
+\coordinate (fork) at ($(input.east)+(0.5,0)$);
+\draw[pcarr] (input.east) -- (fork) |- (loggabor.west);
+\draw[vitarr] (input.east) -- (vit.west);
+\draw[illarr] (input.east) -- (fork) |- (clahe.west);
+
+\draw[pcarr]  (loggabor) -- (pcenc);
+\draw[vitarr] (vit)      -- (patchtok);
+\draw[illarr] (clahe)    -- (illcnn);
+
+\coordinate (prefuse) at ($(patchtok.east)+(0.6,0)$);
+\draw[pcarr]  (pcenc.east)   -| (prefuse) |- (fusion.west);
+\draw[vitarr] (patchtok.east) -- (fusion.west);
+\draw[illarr] (illcnn.east)  -| (prefuse) |- (fusion.west);
+
+\draw[fuarr] (fusion) -- (clf);
+\draw[fuarr] (clf)    -- (out);
+
+\node[lbl, above=0.15cm of loggabor, xshift=0.6cm] {\textcolor{cyan!70!black}{Phase Congruency Stream (fixed features)}};
+\node[lbl, above=0.12cm of vit,      xshift=0.6cm] {\textcolor{blue!60!black}{Semantic Stream (learned)}};
+\node[lbl, below=0.15cm of clahe,    xshift=0.6cm] {\textcolor{orange!70!black}{Illumination Stream (CLAHE + learned)}};
+
+\begin{pgfonlayer}{background}
+  \node[draw=gray!30, fill=gray!4, rounded corners=6pt, inner sep=6pt,
+        fit=(loggabor)(pcenc)(vit)(patchtok)(clahe)(illcnn)(fusion)(clf)]
+        (panel) {};
+\end{pgfonlayer}
+
+\end{tikzpicture}
+\caption{The three streams in PhasePhyto. The PC stream takes the grayscale image, runs it through a fixed log-Gabor filter bank with four scales and eight orientations, and encodes the resulting structural maps with a small CNN. The semantic stream feeds the RGB image into a pretrained ViT-B/16 and produces 197 patch tokens of dimension 768. The illumination stream applies CLAHE normalization and a shallow CNN. PC tokens query ViT patch tokens through eight head cross attention. The fused output is concatenated with the illumination embedding before the classifier head. The PC filter bank has no trainable parameters; everything else is learned.}
+\label{fig:architecture}
+\end{figure*}
+
+The model has three parallel streams, shown in Fig.~\ref{fig:architecture}.
+
+The \textbf{PC stream} converts the input RGB image to grayscale, runs a log-Gabor filter bank (4 scales, 8 orientations), and produces three structural maps: PC magnitude, phase symmetry, and oriented energy. A small CNN (about 150K parameters) turns those maps into structural tokens. The \textbf{semantic stream} feeds the RGB image into a ViT-B/16 backbone (about 86M parameters)~\cite{Dosovitskiy2021}, which gives 197 patch tokens of dimension 768. The \textbf{illumination stream} applies CLAHE normalization to flatten global lighting differences and then encodes the result through a shallow CNN (about 150K parameters) into a small auxiliary embedding.
+
+In the full model, the structural tokens from the PC stream act as queries against the ViT patch tokens through 8 head cross attention with fusion dimension 256. The fused result is concatenated with the illumination embedding and passed to the classification head (about 138K parameters). The \textbf{backbone only} ablation drops the PC stream and the cross attention. The \textbf{no fusion} ablation keeps all three streams but skips cross attention and uses simple concatenation. The \textbf{PC only} ablation keeps just the PC and illumination streams. The full configuration totals around 87M parameters, almost all in the ViT-B/16 backbone.
+
+The PC filter bank has no trainable parameters. The log-Gabor wavelets are defined analytically and held fixed. Only the downstream token encoder, the cross attention block, and the classifier head are trained. That makes the PC branch a clean test of whether physics inspired fixed features help OOD transfer when the classifier on top is still trained on the source domain.
+
+\subsection{Training Recipe}
+\label{sec:recipe}
+
+Table~\ref{tab:config} lists the hyperparameters we used. The most important pieces are these:
+
+\begin{table}[ht]
+\caption{PhasePhyto training configuration.}
+\label{tab:config}
+\centering
+\begin{tabular}{ll}
+\toprule
+Hyperparameter & Value \\
+\midrule
+Backbone & ViT-B/16 (ImageNet-21k pretrained) \\
+Image size & 224$\times$224 \\
+Base learning rate & $3 \times 10^{-4}$ \\
+Backbone LR multiplier & $0.1\times$ (differential LR) \\
+Batch size & 16 \\
+Epochs & 15 \\
+Label smoothing $\varepsilon$ & 0.1 \\
+EMA decay & 0.999 \\
+SAM perturbation radius $\rho$ & 0.05 \\
+RandAugment ($N$, $M$) & (2, 9) \\
+Random erasing probability & 0.25 \\
+Background replacement prob. & 0.50 \\
+HSV saturation threshold & 40 \\
+TTA & Horizontal flip \\
+TENT steps / LR & 20 / $10^{-3}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Differential learning rates.} The pretrained ViT runs at 10 times lower learning rate than the rest. This keeps the backbone close to its pretrained weights while letting the fusion head and PC encoder adapt.
+
+\textbf{Label smoothing.} With $\varepsilon = 0.1$~\cite{Szegedy2016}, the model is less likely to be over confident on PlantVillage and so calibration on PlantDoc is better.
+
+\textbf{EMA.} A shadow copy of the weights is updated at decay 0.999 every step~\cite{Izmailov2018}. We evaluate and checkpoint with the EMA weights.
+
+\textbf{SAM.} The two pass update minimizes the loss in a small neighborhood of the current parameters~\cite{Foret2021}. Flat optima generalize better to new domains.
+
+\textbf{HSV foreground gating.} Saturation thresholding in the HSV color space picks out the leaf, and background pixels get replaced with random crops. This makes it harder for the model to take a shortcut through background texture.
+
+\textbf{Test time pieces.} At evaluation, we average predictions on the image and its horizontal flip (TTA), and we run TENT~\cite{Wang2021} for 20 steps to adapt the normalization affines to the target distribution.
+
+\subsection{Datasets and Evaluation Protocol}
+
+\textbf{PlantVillage}~\cite{Hughes2015} is the source domain (87,848 training images, 25 mapped disease classes). \textbf{PlantDoc}~\cite{Singh2020} is the primary OOD target (153 mapped test samples in the same 25 classes). The target set is small, which is a real limitation. We address it partly with a second benchmark.
+
+For the \textbf{Apple Overlap Benchmark}, we take the three classes that appear in PlantVillage, PlantDoc, and Plant Pathology 2021~\cite{Thapa2020}: \textit{Apple healthy}, \textit{Apple scab}, and \textit{Cedar apple rust}. PP2021 gives a much larger target split with $n{=}11{,}310$ samples, which lets us tell whether intervention effects are real or just noise. We report accuracy and macro F1 (the unweighted mean of per class F1) throughout.
+
+\section{Results}
+\label{sec:results}
+
+\subsection{Main 25 Class OOD Ablation}
+
+Table~\ref{tab:ablation} has the central ablation. The full model and the backbone only variant land at the same target accuracy of 0.5229 and differ by only 0.009 macro F1, so the PC stream is not adding measurable OOD signal under a shared recipe. Both beat the plain ViT baseline by 23.5 points, which is the main thing we wanted to know: the recipe is what is doing the work, not the architecture. The PC only variant collapses to 9.15\% target accuracy even though it reaches 73.40\% on the source, which says structural feature invariance alone is not enough for OOD classification.
+
+\begin{table}[ht]
+\caption{PlantVillage to PlantDoc ablation, target metrics with TTA and TENT, $n{=}153$.}
 \label{tab:ablation}
 \centering
 \begin{tabular}{lcccc}
 \toprule
 Ablation & Src Acc & Src F1 & Tgt Acc & Tgt F1 \\
 \midrule
-full+leafmask & 0.9975 & 0.9955 & 0.5229 & 0.3944 \\
+Baseline ViT (no recipe) & 0.9931 & 0.9886 & 0.2876 & 0.2119 \\
+\midrule
+full + leafmask & 0.9975 & 0.9955 & 0.5229 & 0.3944 \\
 backbone\_only & 0.9975 & 0.9955 & 0.5229 & 0.3859 \\
 no\_fusion & 0.9975 & 0.9955 & 0.4902 & 0.3464 \\
 pc\_only & 0.7340 & 0.5878 & 0.0915 & 0.0791 \\
@@ -76,103 +256,192 @@ pc\_only & 0.7340 & 0.5878 & 0.0915 & 0.0791 \\
 \end{tabular}
 \end{table}
 
-The key observation is that \textbf{full} and \textbf{backbone\_only} achieve identical target accuracy and differ by only +0.009 macro-F1. Under a shared recipe, the PC stream therefore does \emph{not} deliver a meaningful OOD gain over the semantic backbone. In contrast, \textbf{pc\_only} fails dramatically on target data despite carrying nontrivial source signal, which immediately suggests that feature-level invariance is insufficient for robust classifier-level transfer.
-
 \begin{figure*}[t]
     \centering
     \includegraphics[width=\textwidth]{figures/ablation_training_grid.png}
-    \caption{Training and validation dynamics across the four ablations. The full and backbone-only variants converge to similarly strong source performance, while the PC-only branch saturates early and never approaches competitive validation quality.}
+    \caption{Training and validation curves for the four ablations across 15 epochs. Top row is training loss, middle row is source validation accuracy, bottom row is target snapshots taken every three epochs. The full, backbone only, and no fusion variants all reach over 99.7\% source accuracy, but the target trajectory is flat or even declines after epoch 9, which means the source best checkpoint is not necessarily the target best checkpoint. The PC only variant never reaches a competitive source level, and its target collapse confirms that the structural stream alone is not enough.}
     \label{fig:traininggrid}
 \end{figure*}
 
-Figure~\ref{fig:traininggrid} reinforces this interpretation. The full, backbone-only, and no-fusion variants all fit the source domain easily, but only the semantic-path variants maintain strong target transfer. The PC-only branch shows a lower ceiling even on source training, and the resulting target breakdown confirms that the structural stream alone is not sufficiently discriminative under field shift.
+\subsection{Training Dynamics and Source to Target Decoupling}
 
-\subsection{Recipe-Driven Improvement}
-Although the architectural claim was not validated, the training recipe itself improved target performance. Relative to the earlier plain-recipe baseline (47.71\% target accuracy, 0.3603 macro-F1), the final hardened configuration reached 52.29\% target accuracy and 0.3944 macro-F1. This is a gain of +4.6 percentage points in target accuracy and +3.4 points in target F1. The most defensible practical claim of the project is therefore not ``PC fusion wins,'' but rather that a carefully layered OOD recipe materially improves transfer on this benchmark.
+A clear secondary finding is that source and target metrics decouple over training. Table~\ref{tab:dynamics} shows the per epoch source validation and target snapshot metrics for the full model. Source validation accuracy hits 99.63\% by epoch 3 and saturates above 99.7\% after that. Target accuracy moves around and does not climb monotonically. So picking a checkpoint by source validation alone is risky for the target side.
 
-\begin{figure*}[t]
-    \centering
-    \includegraphics[width=\textwidth]{figures/phasephyto_diagnostics_grid.png}
-    \caption{Additional diagnostics from the full-model artifact bundle. The illumination-invariance panel shows how frequency-domain maps remain structured under brightness changes; the leaf-mask sanity panel shows the gating used to suppress background clutter; the qualitative analysis panel visualizes PC maps and attention behavior on a representative sample.}
-    \label{fig:diagnostics}
-\end{figure*}
-
-The diagnostic panels in Figure~\ref{fig:diagnostics} help explain why the recipe remains useful even though the full fusion model does not outperform the backbone-only baseline. The illumination and leaf-masking utilities still suppress nuisance variation, and the attention visualizations show that the model does respond to biologically meaningful structure. The negative result is therefore not ``the model learned nothing,'' but rather ``the extra structural branch did not convert those signals into measurable OOD gains over a strong ViT baseline.''
-
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=\linewidth]{figures/confusion_matrices.png}
-    \caption{Source and target confusion-matrix comparison for the final full-model artifact bundle. The strong source performance contrasts sharply with the noisier target confusion pattern.}
-    \label{fig:confusion}
-\end{figure}
-
-The confusion matrices in Figure~\ref{fig:confusion} make the source--target gap visually explicit. Source predictions are nearly saturated, whereas the target confusion pattern remains diffuse, supporting the claim that the unresolved problem is domain shift rather than underfitting.
-
-\subsection{Strict Apple-Overlap Benchmark}
-To test whether the main story survives under tighter label control, we built a second benchmark on the shared 3-class apple label space (healthy, apple scab, cedar apple rust) across PlantVillage, PlantDoc, and PP2021. This removes the ``label mismatch is doing the work'' explanation and provides a statistically meaningful real-world target set.
-
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=\linewidth]{figures/apple_overlap_summary.png}
-    \caption{Baseline apple-overlap summary across PlantDoc and PP2021. The PP2021 gap is much larger and therefore more informative than the small PlantDoc test split.}
-    \label{fig:appleoverlap}
-\end{figure}
-
-On PP2021, the baseline overlap model reaches 0.7136 accuracy and 0.6813 macro-F1. The target gap is highly asymmetric: healthy remains relatively strong, while apple scab and especially cedar apple rust degrade sharply. This exposes two failure modes: a \emph{healthy bias} induced by the PlantVillage class prior and a \emph{rust$\rightarrow$scab visual collapse} that calibration alone cannot fix.
-
-For completeness, the same source-only model reaches 0.8621 accuracy and 0.8632 macro-F1 on the much smaller PlantDoc apple-overlap split. We treat that result as directionally useful but statistically anecdotal because the target sample size is only $n=29$.
-
-\begin{table}[t]
-\caption{PP2021 follow-up interventions on the apple-overlap benchmark.}
-\label{tab:fixes}
+\begin{table}[ht]
+\caption{Source vs target dynamics for the full model. Source values come from the PlantVillage validation split. Target snapshots are raw evaluations during training (no TTA, no TENT). The final reported target accuracy of 52.29\% is with TTA and TENT applied to the best source F1 checkpoint.}
+\label{tab:dynamics}
 \centering
-\begin{tabular}{lcc}
+\begin{tabular}{ccccc}
 \toprule
-Variant & Accuracy & Macro-F1 \\
+Epoch & Src Val Acc & Src Val F1 & Tgt Acc & Tgt F1 \\
 \midrule
-Baseline & 0.7136 & 0.6813 \\
-Fix A uniform prior & 0.6789 & 0.6619 \\
-Fix A oracle prior & 0.7049 & 0.6779 \\
-Fix B full rebalance & 0.7416 & 0.6969 \\
-Fix B softer rebalance & \textbf{0.7393} & \textbf{0.7015} \\
+3  & 0.9963 & 0.9928 & 0.4902 & 0.3614 \\
+6  & 0.9965 & 0.9939 & 0.4837 & 0.3590 \\
+9  & 0.9970 & 0.9946 & 0.4771 & 0.3559 \\
+12 & 0.9972 & 0.9950 & 0.4641 & 0.3462 \\
+15 & 0.9972 & 0.9949 & 0.4967 & 0.3591 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:fixes} shows that the best-performing intervention is not calibration but softer class rebalancing (\texttt{balanced\_sampler\_power = 0.5}). Even oracle-prior calibration underperforms the baseline on macro-F1, which is strong evidence that the residual gap is not mainly a prior-shift problem.
+The backbone only model behaves a little differently. Its target snapshot rises to 0.5229 at epoch 12 and holds at epoch 15 even before TTA and TENT. That suggests the PC branch in the full model adds some source specific noise that TTA and TENT have to clean up at inference time.
 
-\begin{figure}[t]
+\subsection{Per Class Target Performance}
+
+Table~\ref{tab:perclass} shows per class precision, recall, and F1 on the PlantDoc target split for the final full model with TTA and TENT applied. Eight classes have zero target support because of label mapping gaps and are excluded. The macro F1 of 0.394 hides a lot of variance: \textit{Pepper bacterial spot} reaches 0.80 F1 while \textit{Cedar apple rust} only reaches 0.27, which lines up with the rust to scab confusion that also shows up in the apple overlap benchmark.
+
+\begin{table}[ht]
+\caption{Per class target metrics for the full model with TTA and TENT. Classes with zero support are excluded. Names are abbreviated for space.}
+\label{tab:perclass}
+\centering
+\small
+\begin{tabular}{lccc>{\centering\arraybackslash}p{0.4cm}}
+\toprule
+Class & Prec & Rec & F1 & $n$ \\
+\midrule
+Apple scab               & 0.62 & 0.80 & 0.70 & 10 \\
+Cedar apple rust         & 0.40 & 0.20 & 0.27 & 10 \\
+Apple healthy            & 0.67 & 0.44 & 0.53 &  9 \\
+Blueberry healthy        & 0.50 & 0.45 & 0.48 & 11 \\
+Cherry healthy           & 0.38 & 0.30 & 0.33 & 10 \\
+Corn Cercospora spot     & 0.22 & 0.50 & 0.31 &  4 \\
+Corn Common rust         & 0.75 & 0.30 & 0.43 & 10 \\
+Corn N.\ Leaf Blight     & 0.60 & 0.50 & 0.55 & 12 \\
+Grape Black rot          & 0.40 & 0.25 & 0.31 &  8 \\
+Grape healthy            & 0.89 & 0.67 & 0.76 & 12 \\
+Peach healthy            & 1.00 & 0.33 & 0.50 &  9 \\
+Pepper Bacterial spot    & 0.73 & 0.89 & 0.80 &  9 \\
+Pepper healthy           & 0.67 & 0.75 & 0.71 &  8 \\
+Potato Early blight      & 0.67 & 0.50 & 0.57 &  8 \\
+Potato Late blight       & 0.64 & 0.88 & 0.74 &  8 \\
+Raspberry healthy        & 0.58 & 1.00 & 0.74 &  7 \\
+Soybean healthy          & 0.67 & 0.25 & 0.36 &  8 \\
+\midrule
+\textbf{Macro avg}       & 0.41 & 0.36 & 0.39 & 153 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{What the Recipe Actually Buys}
+
+The confusion matrices in Fig.~\ref{fig:confusion} make the source target gap obvious. Source predictions are nearly diagonal. Target predictions are spread out. The qualitative diagnostic in Fig.~\ref{fig:qualitative} shows that the cross attention does pay attention to leaf structure and lesion margins, so the negative architectural result is not that the model failed to learn anything. The PC stream just did not turn those signals into measurable OOD gains over a plain ViT.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=\linewidth]{figures/confusion_matrices.png}
+    \caption{Source (PlantVillage) and target (PlantDoc) confusion matrices for the full model with TTA and TENT. The source matrix is nearly diagonal. The target matrix is diffuse across many classes, which is consistent with domain shift rather than underfitting.}
+    \label{fig:confusion}
+\end{figure}
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=\linewidth]{figures/analysis_sample_0.png}
+    \caption{Qualitative diagnostic for the full model. From left to right: input leaf, PC magnitude, phase symmetry, and the cross attention overlay. Attention concentrates on lesion edges and vein structure, so the model does respond to biologically meaningful features even though the OOD accuracy is modest.}
+    \label{fig:qualitative}
+\end{figure}
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=\linewidth]{figures/illumination_invariance.png}
+    \caption{Illumination invariance check. The CLAHE stream reduces within class lighting variance before classification, which is one of the larger nuisance factors when going from PlantVillage to PlantDoc.}
+    \label{fig:illumination}
+\end{figure}
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=\linewidth]{figures/leaf_mask_sanity.png}
+    \caption{HSV leaf mask sanity check. The green overlay is the foreground produced by the saturation threshold. The mask separates the leaf from background reasonably well, which is what we need before extracting PC features so they are computed on leaf pixels rather than background.}
+    \label{fig:leafmask}
+\end{figure}
+
+\subsection{Strict Apple Overlap Benchmark}
+
+To check whether the main story holds under tighter label control and a larger target set, we ran a second benchmark on the three apple classes shared across PlantVillage, PlantDoc, and PP2021~\cite{Thapa2020}.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=\linewidth]{figures/apple_overlap_summary.png}
+    \caption{Apple overlap baseline. Source accuracy is 99.96\% on both targets. PP2021 macro F1 (0.6813) is much lower than PlantDoc apple overlap macro F1 (0.8632). The PlantDoc result is on only 29 samples and should be treated as anecdotal.}
+    \label{fig:appleoverlap}
+\end{figure}
+
+The baseline apple model reaches 0.7136 accuracy and 0.6813 macro F1 on PP2021. Table~\ref{tab:fixes} compares four interventions. The most informative result is that even with an oracle target prior, Fix A still does worse on macro F1 than the uncalibrated baseline. So the residual gap is not just prior shift. Softer class rebalancing during training (Fix B with $\text{power}=0.5$) gives the best macro F1 of 0.7015, which means a feature shift component is left over and has to be addressed in training rather than at inference.
+
+\begin{table}[t]
+\caption{PP2021 apple overlap interventions, $n{=}11{,}310$. Fix A applies prior calibration to logits at inference. Fix B re weights the source sampler at training time.}
+\label{tab:fixes}
+\centering
+\begin{tabular}{lccccc}
+\toprule
+Variant & Acc & F1 & Prec & Rec \\
+\midrule
+Baseline              & 0.7136 & 0.6813 & 0.7414 & 0.6676 \\
+Fix A uniform prior   & 0.6789 & 0.6619 & 0.6543 & 0.6883 \\
+Fix A oracle prior    & 0.7049 & 0.6779 & 0.7290 & 0.6572 \\
+Fix B full rebalance  & 0.7416 & 0.6969 & 0.7495 & 0.6805 \\
+Fix B softer (0.5)    & \textbf{0.7393} & \textbf{0.7015} & 0.7416 & 0.6873 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!t]
     \centering
     \includegraphics[width=\linewidth]{figures/pp2021_macro_comparison_v2.png}
-    \caption{PP2021 macro comparison for the v2 apple-overlap follow-up. Softer rebalancing provides the strongest macro-F1 while maintaining high accuracy.}
+    \caption{Macro accuracy and F1 on PP2021 across all interventions. Fix B with softer rebalancing has the best macro F1. Fix A interventions are either net harmful or roughly flat, which says calibration alone is not enough.}
     \label{fig:ppmacro}
 \end{figure}
 
-Figure~\ref{fig:ppmacro} highlights the macro trend clearly. Fix A with a uniform target prior is net harmful, oracle-prior Fix A is still slightly below baseline, and both rebalancing variants improve overall transfer. The softer rebalancing setting trades a tiny amount of accuracy for the best macro-F1, which is the more appropriate metric under class asymmetry.
-
-\begin{figure}[t]
+\begin{figure}[!t]
     \centering
     \includegraphics[width=\linewidth]{figures/pp2021_per_class_f1_v2.png}
-    \caption{Per-class PP2021 F1 under calibration and rebalancing. The main win from rebalancing is stronger scab/healthy balance, while calibration does not recover the rust-specific feature-shift problem.}
+    \caption{Per class F1 on PP2021 under each intervention. Full rebalancing pushes scab F1 up to 0.7085 but drops cedar apple rust to 0.5551. The softer setting brings rust back to 0.5820 while keeping scab and healthy gains, which is why it has the best macro F1.}
     \label{fig:ppclassf1}
 \end{figure}
 
-Per-class F1 in Figure~\ref{fig:ppclassf1} clarifies why the softer rebalancing variant is preferable. Full rebalancing gives the best scab F1 but harms rust too aggressively: cedar apple rust drops from 0.5977 at baseline to 0.5551 under full rebalancing. The softer setting raises rust back to 0.5820 while preserving strong healthy and scab performance, so it recovers most of the rust regression without giving up the macro-level gain.
+Table~\ref{tab:perclass_apple} has the per class breakdown for the best variant. Healthy benefits the most from rebalancing (F1 from 0.7956 to 0.8244). Cedar apple rust stays the hardest class, which points at a real rust to scab visual confusion that resampling alone does not solve.
+
+\begin{table}[ht]
+\caption{Per class PP2021 metrics for the best variant (Fix B softer rebalance, $\text{power}=0.5$).}
+\label{tab:perclass_apple}
+\centering
+\begin{tabular}{lcccc}
+\toprule
+Class & Prec & Rec & F1 & $n$ \\
+\midrule
+Apple scab        & 0.715 & 0.682 & 0.698 & 4{,}826 \\
+Cedar apple rust  & 0.753 & 0.474 & 0.582 & 1{,}860 \\
+Apple healthy     & 0.757 & 0.905 & 0.824 & 4{,}624 \\
+\midrule
+Macro avg         & 0.742 & 0.687 & 0.702 & 11{,}310 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \section{Discussion}
-The main scientific finding is a negative one: \emph{amplitude-invariant features are not automatically classifier-invariant}. The PC operator itself satisfies the invariance property it was designed for~\cite{Kovesi1999}, but the learned classifier can still overfit source-specific structure embedded in those invariant features. Our experiments therefore point to what we call the \emph{invariance--classifier-head gap}: mathematically stable local features do not guarantee stable downstream decision boundaries.
+\label{sec:discussion}
 
-The ablations also clarify the role of fusion. Removing cross-attention while keeping the PC stream (\textbf{no\_fusion}) hurts target performance more than removing the PC stream altogether (\textbf{backbone\_only}). This suggests that the fusion mechanism can sometimes mitigate damage introduced by the structural branch, but it does not create new transfer signal strong enough to beat the semantic backbone. In other words, cross-attention behaves more like a stabilizer than like a decisive OOD advantage.
+\textbf{Invariance does not propagate to the classifier head.} The most important takeaway is that amplitude invariant features are not automatically classifier invariant. The PC operator does what it claims at the feature level, but the classifier head can still overfit to source specific co occurrences that happen to be present in the invariant features. The PC only run reaches 73.40\% source accuracy (so the structural features carry useful signal) and then drops to 9.15\% on the target, a 64 point gap. The full and backbone only models drop by about 47.5 points each. So the PC stream actually produces a larger absolute target drop than the ViT backbone alone, even though the features themselves are formally invariant. Invariance at the input does not stop the head from memorizing source statistics during training.
 
-The apple-overlap follow-up sharpens the practical lesson. Because calibration fails even under oracle priors, the dominant error source is not just a mismatched class distribution. Instead, the residual gap contains a genuine feature-shift component, especially visible in the rust/scab confusion. That is why recipe-side interventions such as softer rebalancing help more than post-hoc calibration: they reshape the learned boundary during training rather than only shifting logits after the fact.
+\textbf{Cross attention is a stabilizer, not an amplifier.} Comparing the full and no fusion variants tells us that removing cross attention while keeping the PC branch hurts target performance (49.02\% vs 52.29\%), but removing the PC branch entirely (backbone only) lands at the same number as the full model. So cross attention is mostly absorbing damage that the PC branch introduces, rather than producing new OOD signal. In any setting where you cannot remove a physics inspired branch, cross attention gating is a safer fusion choice than concatenation.
 
-There are still limitations. The main 25-class PlantDoc target set contains only 153 mapped samples, so tiny deltas should not be over-interpreted. The overlap study is stronger because PP2021 provides n = 11{,}310 target samples, but it is still based on a single-seed sweep. A natural next step would be multi-seed confirmation plus a transductive intervention such as TENT on PP2021 or a small target fine-tune. Those experiments would test whether the remaining rust-specific gap is mostly adaptation-limited rather than architecture-limited.
+\textbf{The recipe is the contribution.} Going from a plain ViT baseline at 28.76\% to a recipe hardened model at 52.29\% is the result we are most confident in. Each piece is individually motivated. SAM and EMA push the optimizer toward flat regions. The HSV mask removes background shortcuts. TENT adapts normalization to target batches at inference time. The fact that the gain holds across all three recipe containing variants (full, backbone only, no fusion) is what convinces us the recipe is the cause and not any specific architecture choice.
+
+\textbf{Calibration vs feature shift.} The apple overlap results are unambiguous about where the residual gap on PP2021 lives. Even an oracle prior calibration cannot beat the uncalibrated baseline on macro F1. So most of what is left is genuine feature shift, especially for cedar apple rust, and it has to be addressed during training (Fix B rebalancing) rather than after the fact (Fix A logit adjustment).
+
+\textbf{Limitations.} The 25 class PlantDoc target split has only 153 mapped samples, so any difference of two points or smaller should not be over interpreted. The apple overlap study is a single seed sweep. Multi seed runs and a transductive variant of TENT applied to the full PP2021 target are the natural next steps. They would tell us whether the rust gap is mostly adaptation limited or architecture limited.
 
 \section{Conclusion}
-This project developed and evaluated PhasePhyto, a physics-informed fusion architecture for botanical OOD classification. The final ablation results show that the original architectural claim does not hold on the PlantVillage $\rightarrow$ PlantDoc benchmark: the full model does not beat an equally trained backbone-only model in a meaningful way, and the PC-only variant fails dramatically on the target domain. However, the project still delivers a useful practical contribution: a reproducible OOD recipe, a rigorous ablation methodology, and a second overlap benchmark that decomposes prior shift from feature shift. The broader lesson is that formal invariance in feature extraction does not guarantee OOD robustness at the classifier level, and that careful empirical discipline is essential when evaluating physics-inspired neural architectures.
+\label{sec:conclusion}
+
+The most useful thing this project produced is a reproducible OOD recipe for plant disease classification. On PlantVillage to PlantDoc, the recipe lifts a plain ViT-B/16 from 28.76\% to 52.29\% target accuracy without changing the architecture in any clever way. The recipe is architecture agnostic, simple to apply, and works across every variant we tested.
+
+The architectural side of the project is more cautious. Phase Congruency features are mathematically invariant to amplitude scaling and the PhasePhyto model does pay attention to lesion structure when we look at the cross attention maps. But the full model and the backbone only variant land at the same target accuracy on this benchmark, which means the PC branch did not turn formal feature invariance into measurable OOD gains. We treat that as a clean signal that physics inspired feature streams need empirical validation before they are claimed as a robustness mechanism.
+
+The apple overlap benchmark adds one more practical lesson. When source and target priors differ, training time class rebalancing beats post hoc prior calibration, and that is true even with an oracle prior. So if you are deploying a model across distributions with shifted class frequencies, fixing the gap during training is more reliable than trying to repair it at inference.
 
 \section*{Acknowledgments}
-We thank the course staff and dataset creators whose resources made this project possible. We also acknowledge the publicly available PlantVillage, PlantDoc, and Plant Pathology 2021 datasets, as well as the open-source PyTorch, timm, Streamlit, Docker, and Hugging Face ecosystems used in the implementation and deployment workflow.
+
+We thank the course staff of DATA 640 (Computer Vision) at the University of Maryland, College Park for their guidance and feedback. We acknowledge the creators of the PlantVillage~\cite{Hughes2015}, PlantDoc~\cite{Singh2020}, and Plant Pathology 2021~\cite{Thapa2020} datasets. The code uses PyTorch, timm, HuggingFace Transformers, Streamlit, and Docker.
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}

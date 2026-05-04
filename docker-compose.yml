@@ -5,8 +5,12 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8501:8501"
-    environment:
-      PHASEPHYTO_ASSETS_ROOT: /external_artifacts
-    volumes:
-      - .:/app
-      - "${PHASEPHYTO_EXTERNAL_ARTIFACTS:-./hf_assets/finalresults}:/external_artifacts:ro"
+    # With no PHASEPHYTO_ASSETS_ROOT set, the app uses the bundled
+    # hf_assets/finalresults directory and downloads model checkpoints
+    # from Hugging Face on first inference.
+    #
+    # To use your own local results instead, uncomment below and set the path:
+    # environment:
+    #   PHASEPHYTO_ASSETS_ROOT: /external_artifacts
+    # volumes:
+    #   - ./hf_assets/finalresults:/external_artifacts:ro
